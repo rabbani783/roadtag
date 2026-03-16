@@ -49,7 +49,6 @@
             appId: "1:480453082341:web:7cd51e2256747f1003280c"
         };
 
-        // 2. Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const reportsRef = database.ref('reports');
@@ -66,20 +65,21 @@
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
                 map.on('click', (e) => processLocation(e.latlng, 'manual'));
                 
-                // --- REAL-TIME SYNC ---
-                // Change this part in your initApp:
-				reportsRef.on('child_added', (snapshot) => {
-			    const data = snapshot.val();
-  			  const key = snapshot.key; // This gets the unique ID from Firebase
-  			  addMarkerToMap(data, key);
-});
+                reportsRef.on('child_added', (snapshot) => {
+                    const data = snapshot.val();
+                    const key = snapshot.key; 
+                    addMarkerToMap(data, key);
+                });
+
+                // Listen for removals to update map in real-time
+                reportsRef.on('child_removed', () => {
+                    location.reload(); 
                 });
 
                 requestLocation(false);
             } catch (e) { alert("Error loading map."); }
         }
 
-        // --- CLOUD SAVING LOGIC ---
         function saveToCloud(lat, lng, roadName, note = "", image = null) {
             reportsRef.push({
                 lat: lat,
@@ -91,51 +91,40 @@
             });
         }
 
-        // --- 1. UPDATED MARKER FUNCTION WITH DELETE BUTTON ---
-// --- 1. UPDATED MARKER FUNCTION WITH DELETE BUTTON ---
-function addMarkerToMap(data, key) {
-    const iconHtml = data.image 
-        ? `<div class="custom-photo-marker" style="width:40px; height:40px; border-radius:50%; border:3px solid white; background-image:url('${data.image}'); background-size:cover; background-position:center;"></div>`
-        : `<div style="width:20px; height:20px; background-color:#3498db; border-radius:50%; border:2px solid white;"></div>`;
+        function addMarkerToMap(data, key) {
+            const iconHtml = data.image 
+                ? `<div style="width:40px; height:40px; border-radius:50%; border:3px solid white; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);"></div>`
+                : `<div style="width:20px; height:20px; background-color:#3498db; border-radius:50%; border:2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`;
 
-    const customIcon = L.divIcon({
-        html: iconHtml,
-        className: 'custom-icon',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-    });
+            const customIcon = L.divIcon({
+                html: iconHtml,
+                className: 'custom-icon',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
 
-    const marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
+            const marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
 
-    let content = `<div class="popup-form">`;
-    content += `<span class="road-label">📍 ${data.road}</span>`;
-    if (data.image) content += `<img src="${data.image}" class="preview-img">`;
-    if (data.note) content += `<p><b>Note:</b> ${data.note}</p>`;
-    
-    // ADD THE DELETE BUTTON HERE
-    // We pass the unique Firebase 'key' to the function
-    content += `<button onclick="deleteReport('${key}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:12px; margin-top:10px; padding:0;">🗑️ Delete Report</button>`;
-    
-    content += `</div>`;
-    marker.bindPopup(content);
-}
+            let content = `<div class="popup-form">`;
+            content += `<span class="road-label">📍 ${data.road}</span>`;
+            if (data.image) content += `<img src="${data.image}" class="preview-img">`;
+            if (data.note) content += `<p><b>Note:</b> ${data.note}</p>`;
+            content += `<hr><button onclick="deleteReport('${key}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:11px; padding:0; width:100%; text-align:center;">🗑️ Delete Report</button>`;
+            content += `</div>`;
+            marker.bindPopup(content);
+        }
 
-// --- 2. THE DELETE LOGIC WITH PASSWORD CONTROL ---
-function deleteReport(firebaseKey) {
-    const secret = prompt("Enter the Master Password to delete this report:");
-    
-    // Change 'Asti123' to whatever password you want!
-    if (secret === "Asti123") {
-        firebase.database().ref('reports/' + firebaseKey).remove()
-            .then(() => {
-                alert("Report deleted successfully.");
-                location.reload(); // Refresh to clear the marker
-            })
-            .catch((error) => alert("Error deleting: " + error));
-    } else {
-        alert("Incorrect password. Access denied.");
-    }
-}
+        function deleteReport(firebaseKey) {
+            const secret = prompt("Enter the Master Password to delete this report:");
+            if (secret === "Asti123") {
+                reportsRef.child(firebaseKey).remove()
+                    .then(() => alert("Report deleted."))
+                    .catch((error) => alert("Error: " + error));
+            } else {
+                alert("Incorrect password.");
+            }
+        }
+
         async function processLocation(latlng, type, imageData = null) {
             const osrmUrl = `https://router.project-osrm.org/nearest/v1/driving/${latlng.lng},${latlng.lat}?number=1`;
             try {
@@ -149,7 +138,6 @@ function deleteReport(firebaseKey) {
                     if (type === 'manual') {
                         showManualPopup(snappedLatLng, roadInfo);
                     } else {
-                        // SAVE CAMERA REPORT TO CLOUD
                         saveToCloud(snappedLatLng.lat, snappedLatLng.lng, roadInfo, "Photo Report", imageData);
                     }
                 }
@@ -161,111 +149,6 @@ function deleteReport(firebaseKey) {
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                const a = data.address;
-                if (a.road) return a.road;
-                const city = a.city || a.town || a.village || "Unknown";
-                return `Near ${city}`;
+                return data.address.road || data.address.city || data.address.town || "Italy Road";
             } catch (e) { return "Italy Road"; }
         }
-
-       function showManualPopup(latlng, roadName) {
-    const formHtml = `
-        <div class="popup-form">
-            <span class="road-label">📍 ${roadName}</span>
-            <textarea id="manualNote" placeholder="Notes (e.g. deep hole)" style="width:100%; height:50px; margin-bottom:5px;"></textarea>
-            
-            <label style="font-size:12px; color:#666;">Add Photo (Optional):</label>
-            <input type="file" id="manualPhoto" accept="image/*" style="font-size:11px; margin-bottom:10px; width:100%;">
-            
-            <button id="manualSaveBtn" class="save-btn" onclick="handleManualSave(${latlng.lat}, ${latlng.lng}, '${roadName.replace(/'/g, "\\'")}')">Save Report</button>
-        </div>`;
-    L.popup().setLatLng(latlng).setContent(formHtml).openOn(map);
-        }
-// --- 2. LOGIC TO PROCESS AND SAVE MANUAL REPORT ---
-async function handleManualSave(lat, lng, roadName) {
-    const note = document.getElementById('manualNote').value;
-    const fileInput = document.getElementById('manualPhoto');
-    const saveBtn = document.getElementById('manualSaveBtn');
-    
-    saveBtn.disabled = true;
-    saveBtn.innerText = "Saving...";
-
-    if (fileInput.files && fileInput.files[0]) {
-        // If there is a photo, compress it first
-        const reader = new FileReader();
-        reader.readAsDataURL(fileInput.files[0]);
-        reader.onload = function (e) {
-            const img = new Image();
-            img.src = e.target.result;
-            img.onload = function () {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 600;
-                const scaleSize = MAX_WIDTH / img.width;
-                canvas.width = MAX_WIDTH;
-                canvas.height = img.height * scaleSize;
-                
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                
-                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-                
-                // Save to Cloud with Photo
-                saveToCloud(lat, lng, roadName, note, compressedBase64);
-                map.closePopup();
-            };
-        };
-    } else {
-        // Save to Cloud without Photo
-        saveToCloud(lat, lng, roadName, note, null);
-        map.closePopup();
-    }
-	}
-        function confirmManualPin(lat, lng, roadName) {
-            const note = document.getElementById('manualNote').value;
-            saveToCloud(lat, lng, roadName, note);
-            map.closePopup();
-        }
-
-        function requestLocation(doFly) {
-            if (!navigator.geolocation) return;
-            navigator.geolocation.getCurrentPosition((pos) => {
-                currentUserPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                localStorage.setItem('lastLocation', JSON.stringify(currentUserPos));
-                if (doFly) map.flyTo([currentUserPos.lat, currentUserPos.lng], 17);
-            }, null, { enableHighAccuracy: true });
-        }
-
-        function verifyLocationThenCamera() {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                currentUserPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                document.getElementById('hiddenCameraInput').click();
-            }, () => alert("GPS required!"), { enableHighAccuracy: true });
-        }
-
-        function handleCameraUpload(event) {
-            const file = event.target.files[0];
-            if (!file || !currentUserPos) return;
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function (e) {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = function () {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 600;
-                    const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-                    processLocation(currentUserPos, 'camera', compressedBase64);
-                    alert("Report sent to cloud!");
-                };
-            };
-        }
-
-        window.onload = initApp;
-    </script>
-</body>
-</html>
