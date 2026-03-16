@@ -89,54 +89,49 @@
             });
         }
 
-        function addMarkerToMap(data) {
-    let iconHtml;
-
-    if (data.image) {
-        // Create a tiny circle with the actual photo as the background
-        iconHtml = `
-            <div style="
-                width: 40px; 
-                height: 40px; 
-                border-radius: 50%; 
-                border: 3px solid white; 
-                box-shadow: 0 2px 6px rgba(0,0,0,0.4); 
-                background-image: url('${data.image}'); 
-                background-size: cover; 
-                background-position: center;
-                overflow: hidden;">
-            </div>`;
-    } else {
-        // Simple blue dot for reports without photos
-        iconHtml = `
-            <div style="
-                width: 20px; 
-                height: 20px; 
-                background-color: #3498db; 
-                border-radius: 50%; 
-                border: 2px solid white; 
-                box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
-            </div>`;
-    }
+        // --- 1. UPDATED MARKER FUNCTION WITH DELETE BUTTON ---
+function addMarkerToMap(data, key) {
+    const iconHtml = data.image 
+        ? `<div class="custom-photo-marker" style="width:40px; height:40px; border-radius:50%; border:3px solid white; background-image:url('${data.image}'); background-size:cover; background-position:center;"></div>`
+        : `<div style="width:20px; height:20px; background-color:#3498db; border-radius:50%; border:2px solid white;"></div>`;
 
     const customIcon = L.divIcon({
         html: iconHtml,
-        className: 'custom-photo-marker',
-        iconSize: data.image ? [40, 40] : [20, 20],
-        iconAnchor: data.image ? [20, 20] : [10, 10]
+        className: 'custom-icon',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
     });
 
     const marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
 
-    // Standard Popup content
     let content = `<div class="popup-form">`;
     content += `<span class="road-label">📍 ${data.road}</span>`;
     if (data.image) content += `<img src="${data.image}" class="preview-img">`;
-    if (data.note) content += `<p style="margin-top:8px;"><b>Note:</b> ${data.note}</p>`;
-    content += `<small style="color:gray;">${new Date(data.timestamp).toLocaleString()}</small>`;
+    if (data.note) content += `<p><b>Note:</b> ${data.note}</p>`;
+    
+    // ADD THE DELETE BUTTON HERE
+    // We pass the unique Firebase 'key' to the function
+    content += `<button onclick="deleteReport('${key}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:12px; margin-top:10px; padding:0;">🗑️ Delete Report</button>`;
+    
     content += `</div>`;
-
     marker.bindPopup(content);
+}
+
+// --- 2. THE DELETE LOGIC WITH PASSWORD CONTROL ---
+function deleteReport(firebaseKey) {
+    const secret = prompt("Enter the Master Password to delete this report:");
+    
+    // Change 'Asti123' to whatever password you want!
+    if (secret === "Asti123") {
+        firebase.database().ref('reports/' + firebaseKey).remove()
+            .then(() => {
+                alert("Report deleted successfully.");
+                location.reload(); // Refresh to clear the marker
+            })
+            .catch((error) => alert("Error deleting: " + error));
+    } else {
+        alert("Incorrect password. Access denied.");
+    }
 }
 
         async function processLocation(latlng, type, imageData = null) {
