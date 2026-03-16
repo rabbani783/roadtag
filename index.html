@@ -90,6 +90,7 @@
         }
 
         // --- 1. UPDATED MARKER FUNCTION WITH DELETE BUTTON ---
+// --- 1. UPDATED MARKER FUNCTION WITH DELETE BUTTON ---
 function addMarkerToMap(data, key) {
     const iconHtml = data.image 
         ? `<div class="custom-photo-marker" style="width:40px; height:40px; border-radius:50%; border:3px solid white; background-image:url('${data.image}'); background-size:cover; background-position:center;"></div>`
@@ -133,7 +134,6 @@ function deleteReport(firebaseKey) {
         alert("Incorrect password. Access denied.");
     }
 }
-
         async function processLocation(latlng, type, imageData = null) {
             const osrmUrl = `https://router.project-osrm.org/nearest/v1/driving/${latlng.lng},${latlng.lat}?number=1`;
             try {
