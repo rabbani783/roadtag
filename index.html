@@ -152,3 +152,90 @@
                 return data.address.road || data.address.city || data.address.town || "Italy Road";
             } catch (e) { return "Italy Road"; }
         }
+
+        function showManualPopup(latlng, roadName) {
+            const formHtml = `
+                <div class="popup-form">
+                    <span class="road-label">📍 ${roadName}</span>
+                    <textarea id="manualNote" placeholder="Notes (e.g. deep hole)" style="width:100%; height:50px; margin-bottom:5px;"></textarea>
+                    <label style="font-size:12px; color:#666;">Add Photo (Optional):</label>
+                    <input type="file" id="manualPhoto" accept="image/*" style="font-size:11px; margin-bottom:10px; width:100%;">
+                    <button id="manualSaveBtn" class="save-btn" onclick="handleManualSave(${latlng.lat}, ${latlng.lng}, '${roadName.replace(/'/g, "\\'")}')">Save Report</button>
+                </div>`;
+            L.popup().setLatLng(latlng).setContent(formHtml).openOn(map);
+        }
+
+        async function handleManualSave(lat, lng, roadName) {
+            const note = document.getElementById('manualNote').value;
+            const fileInput = document.getElementById('manualPhoto');
+            const saveBtn = document.getElementById('manualSaveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerText = "Saving...";
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.readAsDataURL(fileInput.files[0]);
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function () {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 600;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                        saveToCloud(lat, lng, roadName, note, compressedBase64);
+                        map.closePopup();
+                    };
+                };
+            } else {
+                saveToCloud(lat, lng, roadName, note, null);
+                map.closePopup();
+            }
+        }
+
+        function requestLocation(doFly) {
+            if (!navigator.geolocation) return;
+            navigator.geolocation.getCurrentPosition((pos) => {
+                currentUserPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                localStorage.setItem('lastLocation', JSON.stringify(currentUserPos));
+                if (doFly) map.flyTo([currentUserPos.lat, currentUserPos.lng], 17);
+            }, null, { enableHighAccuracy: true });
+        }
+
+        function verifyLocationThenCamera() {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                currentUserPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                document.getElementById('hiddenCameraInput').click();
+            }, () => alert("GPS required!"), { enableHighAccuracy: true });
+        }
+
+        function handleCameraUpload(event) {
+            const file = event.target.files[0];
+            if (!file || !currentUserPos) return;
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function (e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 600;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                    processLocation(currentUserPos, 'camera', compressedBase64);
+                };
+            };
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
