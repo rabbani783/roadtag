@@ -67,10 +67,12 @@
                 map.on('click', (e) => processLocation(e.latlng, 'manual'));
                 
                 // --- REAL-TIME SYNC ---
-                // This downloads all reports from Firebase and shows them to everyone
-                reportsRef.on('child_added', (snapshot) => {
-                    const data = snapshot.val();
-                    addMarkerToMap(data);
+                // Change this part in your initApp:
+				reportsRef.on('child_added', (snapshot) => {
+			    const data = snapshot.val();
+  			  const key = snapshot.key; // This gets the unique ID from Firebase
+  			  addMarkerToMap(data, key);
+});
                 });
 
                 requestLocation(false);
