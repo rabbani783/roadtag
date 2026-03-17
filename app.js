@@ -20,7 +20,10 @@ function initApp() {
         const savedLoc = JSON.parse(localStorage.getItem('lastLocation'));
         const startPos = savedLoc ? [savedLoc.lat, savedLoc.lng] : italyCenter;
         
-        map = L.map('map', { zoomControl: false }).setView(startPos, savedLoc ? 15 : 6);
+        map = L.map('map', { 
+			zoomControl: false,
+			minZoom: 9 // Prevents zooming out to see all of Italy
+		}).setView([44.90, 8.20], 10);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
             maxZoom: 19 
