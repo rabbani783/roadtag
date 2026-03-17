@@ -74,21 +74,46 @@ function deleteReport(firebaseKey) {
 
 async function processLocation(latlng, type, imageData = null) {
     try {
+        // 1. Get the snapped road position
         const res = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${latlng.lng},${latlng.lat}?number=1`);
         const data = await res.json();
         const snapped = data.waypoints[0].location;
         const snappedLatLng = { lat: snapped[1], lng: snapped[0] };
         
-        const roadRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${snappedLatLng.lat}&lon=${snappedLatLng.lng}&zoom=18`);
+        // 2. Get full address details from Nominatim
+        const roadRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${snappedLatLng.lat}&lon=${snappedLatLng.lng}&zoom=18&addressdetails=1`);
         const roadData = await roadRes.json();
-        const roadName = roadData.address.road || roadData.address.city || "Italy Road";
+        const addr = roadData.address;
+
+        // 3. THE ASTI FILTER (Geofence)
+        // We check if the city, town, village, or province mentions "Asti"
+        const isAsti = (addr.city === "Asti" || addr.town === "Asti" || addr.county === "Asti" || addr.province === "Asti");
+
+        if (!isAsti) {
+            alert("🛑 Error: This app only accepts reports within the Province of Asti.");
+            return; // STOP HERE - Do not save to Firebase
+        }
+
+        // 4. Continue if it is in Asti
+        const roadName = addr.road || addr.city || addr.village || "Road in Asti";
 
         if (type === 'manual') {
             showManualPopup(snappedLatLng, roadName);
         } else {
-            reportsRef.push({ lat: snappedLatLng.lat, lng: snappedLatLng.lng, road: roadName, note: "Photo Report", image: imageData, timestamp: Date.now() });
+            reportsRef.push({ 
+                lat: snappedLatLng.lat, 
+                lng: snappedLatLng.lng, 
+                road: roadName, 
+                note: "Photo Report", 
+                image: imageData, 
+                timestamp: Date.now() 
+            });
+            alert("✅ Report saved for Asti!");
         }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error(err);
+        alert("Could not verify location. Please try again.");
+    }
 }
 
 function showManualPopup(latlng, roadName) {
