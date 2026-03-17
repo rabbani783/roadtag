@@ -67,6 +67,9 @@
                     attribution: '© OSM'
                 }).addTo(map);
 
+                // Ensure map tiles load correctly
+                setTimeout(() => map.invalidateSize(), 400);
+
                 map.on('click', (e) => processLocation(e.latlng, 'manual'));
                 
                 reportsRef.on('child_added', (snapshot) => {
@@ -120,4 +123,62 @@
             try {
                 const res = await fetch(osrmUrl);
                 const data = await res.json();
-                const snapped = data.waypoints[0].location
+                const snapped = data.waypoints[0].location;
+                const snappedLatLng = { lat: snapped[1], lng: snapped[0] };
+                const roadInfo = await getRoadOrCityName(snappedLatLng);
+                
+                if (type === 'manual') {
+                    showManualPopup(snappedLatLng, roadInfo);
+                } else {
+                    reportsRef.push({
+                        lat: snappedLatLng.lat,
+                        lng: snappedLatLng.lng,
+                        road: roadInfo,
+                        note: "Photo Report",
+                        image: imageData,
+                        timestamp: Date.now()
+                    });
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function getRoadOrCityName(latlng) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=18`);
+                const data = await response.json();
+                return data.address.road || data.address.city || "Italy Road";
+            } catch (e) { return "Italy Road"; }
+        }
+
+        function showManualPopup(latlng, roadName) {
+            const formHtml = `
+                <div class="popup-form">
+                    <span class="road-label">📍 ${roadName}</span>
+                    <textarea id="manualNote" placeholder="Notes" style="width:100%; height:50px;"></textarea>
+                    <input type="file" id="manualPhoto" accept="image/*" style="width:100%; margin:5px 0;">
+                    <button id="manualSaveBtn" class="save-btn" onclick="handleManualSave(${latlng.lat}, ${latlng.lng}, '${roadName.replace(/'/g, "\\'")}')">Save</button>
+                </div>`;
+            L.popup().setLatLng(latlng).setContent(formHtml).openOn(map);
+        }
+
+        async function handleManualSave(lat, lng, roadName) {
+            const note = document.getElementById('manualNote').value;
+            const fileInput = document.getElementById('manualPhoto');
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.readAsDataURL(fileInput.files[0]);
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function () {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = 600;
+                        canvas.height = img.height * (600 / img.width);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        reportsRef.push({ lat, lng, road: roadName, note, image: canvas.toDataURL('image/jpeg', 0.6), timestamp: Date.now() });
+                        map.closePopup();
+                    };
+                };
+            } else {
+                reportsRef.push({ lat, lng, road: roadName
