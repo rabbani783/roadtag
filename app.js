@@ -25,6 +25,27 @@ function initApp() {
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
             maxZoom: 19 
         }).addTo(map);
+			// --- ASTI OVERLAY LOGIC ---
+
+		// These coordinates represent a rough box/polygon around the Asti Province
+		const astiPolygon = [
+			[45.14, 7.85], // Top Left
+			[45.14, 8.45], // Top Right
+			[44.65, 8.45], // Bottom Right
+			[44.65, 7.85]  // Bottom Left
+		];
+
+		// Add the yellow fill to the map
+		const astiOverlay = L.polygon(astiPolygon, {
+			color: "#f1c40f",      // Border color (Yellow)
+			fillColor: "#f1c40f",  // Fill color
+			fillOpacity: 0.15,     // Very light so you can still see the map
+			weight: 2,             // Border thickness
+			interactive: false     // Users click "through" it to the map
+		}).addTo(map);
+
+		// Optional: Zoom the map to fit this area automatically on start
+		map.fitBounds(astiOverlay.getBounds());
 
         // Fix for grey screen on mobile
         setTimeout(() => { map.invalidateSize(); }, 500);
@@ -116,13 +137,21 @@ async function processLocation(latlng, type, imageData = null) {
     }
 }
 
-function showManualPopup(latlng, roadName) {
+function showManualPopup(latlng, roadName, isAsti) {
+    const buttonStyle = isAsti ? "" : "background:#bdc3c7; cursor:not-allowed;";
+    const buttonText = isAsti ? "Save Report" : "Outside Asti Area";
+    const disabledAttr = isAsti ? "" : "disabled";
+
     const formHtml = `
         <div class="popup-form">
             <span class="road-label">📍 ${roadName}</span>
             <textarea id="manualNote" placeholder="Notes" style="width:100%; height:50px;"></textarea>
             <input type="file" id="manualPhoto" accept="image/*" style="width:100%; margin:5px 0;">
-            <button id="manualSaveBtn" class="save-btn" onclick="handleManualSave(${latlng.lat}, ${latlng.lng}, '${roadName.replace(/'/g, "\\'")}')">Save</button>
+            <button id="manualSaveBtn" class="save-btn" ${disabledAttr} 
+                style="${buttonStyle}"
+                onclick="handleManualSave(${latlng.lat}, ${latlng.lng}, '${roadName.replace(/'/g, "\\'")}')">
+                ${buttonText}
+            </button>
         </div>`;
     L.popup().setLatLng(latlng).setContent(formHtml).openOn(map);
 }
