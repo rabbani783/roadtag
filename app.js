@@ -93,14 +93,26 @@ async function processLocation(latlng, type, imageData = null) {
         const roadData = await roadRes.json();
         const addr = roadData.address;
 
-        // Asti Filter
-        const isAsti = (addr.city === "Asti" || addr.town === "Asti" || addr.county === "Asti" || addr.province === "Asti" || addr.state === "Piedmont");
-
+        // --- NEW IMPROVED ASTI FILTER ---
+        // Postcodes in the province of Asti start with 14xxx
+        const postcode = addr.postcode || "";
+        const provinceCode = addr.province || addr.county || "";
+        
+        const isAsti = (
+            provinceCode.includes("Asti") || 
+            postcode.startsWith("14") || 
+            addr.city_district === "Asti"
+        );
+		if (!isAsti && type === 'manual') {
+    console.log("Location rejected. Address found:", addr);
+		}
         if (type === 'manual') {
+            // This passes the true/false check to the popup
             showManualPopup(snappedLatLng, addr.road || addr.city || "Road in Asti", isAsti);
         } else {
+            // For camera reports, we block them immediately if not in Asti
             if (!isAsti) {
-                alert("🛑 Reports are only allowed within the Province of Asti.");
+                alert("🛑 Reports blocked: You are outside the Province of Asti boundary.");
                 return;
             }
             reportsRef.push({ 
