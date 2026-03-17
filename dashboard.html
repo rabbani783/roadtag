@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asti RoadTag | Glass Console</title>
+    <title>Asti RoadTag | Pro Console</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
@@ -11,141 +11,128 @@
 
     <style>
         :root {
-            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass: rgba(255, 255, 255, 0.1);
             --glass-border: rgba(255, 255, 255, 0.2);
             --primary: #6366f1;
-            --success: #22c55e;
+            --success: #10b981;
             --danger: #ef4444;
+            --sidebar-w: 280px;
         }
 
         body { 
-            margin: 0; 
-            font-family: 'Inter', sans-serif; 
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); 
-            background-attachment: fixed;
-            color: white; 
-            display: flex;
-            min-height: 100vh;
+            margin: 0; font-family: 'Inter', sans-serif; 
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a);
+            background-attachment: fixed; color: white; display: flex; min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        /* Glass Sidebar */
+        /* --- BURGER MENU & SIDEBAR --- */
         .sidebar {
-            width: 260px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(15px);
-            border-right: 1px solid var(--glass-border);
-            height: 100vh;
-            position: fixed;
-            transition: 0.3s;
-            display: flex;
-            flex-direction: column;
-            z-index: 1000;
+            width: var(--sidebar-w); background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px); border-right: 1px solid var(--glass-border);
+            height: 100vh; position: fixed; left: -280px; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000; display: flex; flex-direction: column;
         }
+        .sidebar.open { left: 0; }
 
-        body.collapsed .sidebar { width: 80px; }
-        body.collapsed .nav-text, body.collapsed h2 { display: none; }
+        .burger-btn {
+            position: fixed; top: 20px; left: 20px; z-index: 2100;
+            background: var(--primary); border: none; color: white;
+            width: 45px; height: 45px; border-radius: 10px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
 
         .nav-item {
-            padding: 18px 25px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            color: rgba(255,255,255,0.7);
-            transition: 0.3s;
+            padding: 20px 30px; cursor: pointer; color: rgba(255,255,255,0.6);
+            transition: 0.3s; display: flex; align-items: center; gap: 15px; font-weight: 500;
         }
-        .nav-item:hover, .nav-item.active {
-            color: white;
-            background: rgba(255,255,255,0.1);
-            border-left: 4px solid var(--primary);
-        }
+        .nav-item:hover, .nav-item.active { color: white; background: rgba(255,255,255,0.05); }
 
-        /* Main Content Area */
+        /* --- MAIN CONTENT --- */
         .main-content {
-            margin-left: 260px;
-            width: calc(100% - 260px);
-            padding: 40px;
-            transition: 0.3s;
+            width: 100%; padding: 80px 40px 40px; transition: 0.4s;
         }
-        body.collapsed .main-content { margin-left: 80px; width: calc(100% - 80px); }
 
-        /* Glass Cards */
         .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            background: var(--glass); backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border); border-radius: 24px;
+            padding: 30px; margin-bottom: 30px;
         }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
-        .stat-val { font-size: 2rem; font-weight: 800; margin: 5px 0; }
+        /* --- STATS & CONTROLS --- */
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 20px; }
+        .search-bar { 
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            padding: 12px 20px; border-radius: 12px; color: white; width: 300px;
+        }
 
-        /* Table Styling */
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { padding: 15px; border-bottom: 1px solid var(--glass-border); font-size: 0.8rem; text-transform: uppercase; color: rgba(255,255,255,0.5); }
-        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
+        .stat-box h4 { margin: 0; font-size: 0.8rem; color: rgba(255,255,255,0.5); text-transform: uppercase; }
+        .stat-box p { margin: 10px 0 0; font-size: 2rem; font-weight: 800; }
+
+        /* --- TABLE --- */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { 
+            text-align: left; padding: 15px; border-bottom: 1px solid var(--glass-border);
+            font-size: 0.75rem; color: rgba(255,255,255,0.4); cursor: pointer; transition: 0.2s;
+        }
+        th:hover { color: var(--primary); }
+        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
 
         .btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer;
+            font-weight: 600; transition: 0.3s; color: white; font-size: 0.85rem;
         }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4); }
-        .btn-excel { background: var(--success); }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .btn-danger:hover { background: var(--danger); color: white; }
 
-        .badge { padding: 5px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 800; }
-        .badge-pending { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .badge-fixed { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
-
-        #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; justify-content: center; align-items: center; }
+        #lightbox { 
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); 
+            z-index: 3000; justify-content: center; align-items: center; 
+        }
     </style>
 </head>
 <body>
 
-<div id="lightbox" onclick="this.style.display='none'"><img id="fullPhoto" src="" style="max-width: 90%; border-radius: 15px;"></div>
+<button class="burger-btn" onclick="toggleSidebar()">☰</button>
 
-<aside class="sidebar">
-    <div style="padding: 30px 25px;">
-        <h2 style="color: var(--primary);">RoadTag <span style="color: white;">Asti</span></h2>
+<div id="lightbox" onclick="this.style.display='none'"><img id="fullPhoto" src="" style="max-width: 85%; border-radius: 20px;"></div>
+
+<aside class="sidebar" id="sidebar">
+    <div style="padding: 40px 30px;">
+        <h2 style="color: var(--primary); margin: 0;">RoadTag Admin</h2>
+        <p style="font-size: 0.7rem; opacity: 0.5;">Provincia di Asti</p>
     </div>
-    <div class="nav-item active" onclick="filterData('all')">📊 All Reports</div>
-    <div class="nav-item" onclick="filterData('pending')">⚠️ Pending</div>
-    <div class="nav-item" onclick="filterData('resolved')">✅ Resolved</div>
-    <div class="nav-item" onclick="window.open('index.html', '_blank')" style="margin-top: auto;">🚀 Open App</div>
-    <div class="nav-item" onclick="document.body.classList.toggle('collapsed')">↔️ Collapse</div>
+    <div class="nav-item active" onclick="filterBy('all')">📊 All Data</div>
+    <div class="nav-item" onclick="filterBy('pending')">⚠️ Urgent</div>
+    <div class="nav-item" onclick="filterBy('resolved')">✅ Resolved</div>
+    <div class="nav-item" onclick="exportToExcel()">📥 Export Excel</div>
+    <div class="nav-item" onclick="window.open('index.html', '_blank')" style="margin-top: auto; border-top: 1px solid var(--glass-border);">🚀 View Map</div>
 </aside>
 
 <main class="main-content">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-        <h1>Admin Dashboard</h1>
-        <button class="btn btn-excel" onclick="exportToExcel()">📊 Download Excel Report</button>
+    <div class="header-row">
+        <h1>Dashboard</h1>
+        <input type="text" id="searchInput" class="search-bar" placeholder="Search street name..." onkeyup="handleSearch()">
     </div>
 
-    <div class="stats-grid glass-card">
-        <div><span>Total Hazards</span><div class="stat-val" id="count-total">0</div></div>
-        <div><span>Active</span><div class="stat-val" style="color: var(--danger)" id="count-pending">0</div></div>
-        <div><span>Fixed</span><div class="stat-val" style="color: var(--success)" id="count-fixed">0</div></div>
+    <div class="glass-card stats-grid">
+        <div class="stat-box"><h4>Active</h4><p id="count-pending" style="color:var(--danger)">0</p></div>
+        <div class="stat-box"><h4>Resolved</h4><p id="count-fixed" style="color:var(--success)">0</p></div>
+        <div class="stat-box"><h4>Total</h4><p id="count-total">0</p></div>
     </div>
 
-    <div class="glass-card" style="padding: 0; overflow: hidden;">
+    <div class="glass-card table-container">
         <table>
             <thead>
                 <tr>
                     <th>Photo</th>
-                    <th>Location</th>
-                    <th>Date</th>
-                    <th>Status</th>
+                    <th onclick="resortData('road')">Location ↕</th>
+                    <th onclick="resortData('timestamp')">Date ↕</th>
+                    <th onclick="resortData('status')">Status ↕</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -167,66 +154,89 @@
 
     firebase.initializeApp(firebaseConfig);
     const reportsRef = firebase.database().ref('reports');
-    let masterData = [];
+    let rawData = [];
+    let currentSort = { key: 'timestamp', asc: false };
+
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
     function init() {
-        reportsRef.on('value', (snapshot) => {
-            const val = snapshot.val();
-            masterData = val ? Object.keys(val).map(key => ({ id: key, ...val[key] })).reverse() : [];
-            updateUI(masterData);
+        reportsRef.on('value', snap => {
+            const val = snap.val();
+            rawData = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
+            processAndRender();
         });
     }
 
-    function updateUI(list) {
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = list.map(item => {
-            const isFixed = item.status === 'resolved';
-            return `
-                <tr>
-                    <td>${item.image ? `<img src="${item.image}" style="width:45px;height:45px;border-radius:10px;cursor:pointer" onclick="viewPhoto('${item.image}')">` : '—'}</td>
-                    <td><div style="font-weight:600">${item.road}</div><div style="font-size:0.7rem;opacity:0.6">${item.note || ''}</div></td>
-                    <td>${new Date(item.timestamp).toLocaleDateString()}</td>
-                    <td><span class="badge ${isFixed ? 'badge-fixed' : 'badge-pending'}">${isFixed ? 'FIXED' : 'ACTIVE'}</span></td>
-                    <td>
-                        ${!isFixed ? `<button class="btn" style="padding:5px 10px;font-size:0.7rem" onclick="markFixed('${item.id}')">Resolve</button>` : ''}
-                        <button onclick="deleteEntry('${item.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;margin-left:10px">🗑️</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+    function resortData(key) {
+        currentSort.asc = currentSort.key === key ? !currentSort.asc : false;
+        currentSort.key = key;
+        processAndRender();
+    }
 
-        document.getElementById('count-total').innerText = masterData.length;
-        document.getElementById('count-pending').innerText = masterData.filter(i => i.status !== 'resolved').length;
-        document.getElementById('count-fixed').innerText = masterData.filter(i => i.status === 'resolved').length;
+    function processAndRender(list = rawData) {
+        let displayList = [...list];
+        
+        // Sorting Logic
+        displayList.sort((a, b) => {
+            let v1 = a[currentSort.key], v2 = b[currentSort.key];
+            if (currentSort.key === 'road') return currentSort.asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+            return currentSort.asc ? v1 - v2 : v2 - v1;
+        });
+
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = displayList.map(item => `
+            <tr>
+                <td>${item.image ? `<img src="${item.image}" style="width:40px;height:40px;border-radius:8px;cursor:pointer" onclick="viewImg('${item.image}')">` : '—'}</td>
+                <td><b>${item.road}</b><br><small style="opacity:0.5">${item.note || ''}</small></td>
+                <td>${new Date(item.timestamp).toLocaleDateString()}</td>
+                <td><span style="color:${item.status==='resolved'?'#10b981':'#ef4444'}; font-weight:bold; font-size:0.7rem;">${item.status==='resolved'?'FIXED':'ACTIVE'}</span></td>
+                <td>
+                    ${item.status !== 'resolved' ? `<button class="btn btn-success" style="padding:5px 10px; font-size:0.7rem" onclick="actionStatus('${item.id}', 'resolved')">Resolve</button>` : ''}
+                    <button class="btn btn-danger" style="padding:5px 10px; font-size:0.7rem" onclick="actionDelete('${item.id}')">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+
+        updateCounters();
+    }
+
+    function updateCounters() {
+        document.getElementById('count-total').innerText = rawData.length;
+        document.getElementById('count-pending').innerText = rawData.filter(i => i.status !== 'resolved').length;
+        document.getElementById('count-fixed').innerText = rawData.filter(i => i.status === 'resolved').length;
+    }
+
+    function handleSearch() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = rawData.filter(i => i.road.toLowerCase().includes(query));
+        processAndRender(filtered);
+    }
+
+    function filterBy(type) {
+        toggleSidebar();
+        if (type === 'all') processAndRender(rawData);
+        else processAndRender(rawData.filter(i => type === 'resolved' ? i.status === 'resolved' : i.status !== 'resolved'));
+    }
+
+    function actionStatus(id, status) {
+        if (prompt("Password:") === "Asti123") reportsRef.child(id).update({ status });
+    }
+
+    function actionDelete(id) {
+        if (prompt("Type 'Asti123' to Delete:") === "Asti123") reportsRef.child(id).remove();
+    }
+
+    function viewImg(src) {
+        document.getElementById('fullPhoto').src = src;
+        document.getElementById('lightbox').style.display = 'flex';
     }
 
     function exportToExcel() {
-        const rows = masterData.map(item => ({
-            "Street Name": item.road,
-            "Notes": item.note,
-            "Date Reported": new Date(item.timestamp).toLocaleString(),
-            "Status": item.status === 'resolved' ? "Fixed" : "Pending",
-            "Latitude": item.lat,
-            "Longitude": item.lng
-        }));
-
-        const worksheet = XLSX.utils.json_to_sheet(rows);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Asti Road Hazards");
-        XLSX.writeFile(workbook, "Asti_Road_Report_" + new Date().toLocaleDateString() + ".xlsx");
-    }
-
-    function markFixed(id) {
-        if (prompt("Password:") === "Asti123") reportsRef.child(id).update({ status: 'resolved' });
-    }
-
-    function deleteEntry(id) {
-        if (prompt("Type 'DELETE' to confirm:") === "Asti123") reportsRef.child(id).remove();
-    }
-
-    function viewPhoto(src) {
-        document.getElementById('fullPhoto').src = src;
-        document.getElementById('lightbox').style.display = 'flex';
+        const data = rawData.map(i => ({ Road: i.road, Note: i.note, Date: new Date(i.timestamp).toLocaleString(), Status: i.status || 'Active' }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Reports");
+        XLSX.writeFile(wb, "Asti_Road_Reports.xlsx");
     }
 
     init();
