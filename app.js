@@ -65,7 +65,42 @@ function initApp() {
         console.error("Initialization Error:", e);
     }
 }
+function addAstiBoundary() {
+    // We fetch the official boundary from Nominatim (OpenStreetMap)
+    // Relation ID 44881 is the official ID for the Province of Asti
+    const url = "https://nominatim.openstreetmap.org/search?format=geojson&q=Provincia+di+Asti&polygon_geojson=1&limit=1";
 
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.features.length > 0) {
+                L.geoJSON(data.features[0], {
+                    style: {
+                        color: "#f1c40f",      // Border Color (Yellow)
+                        weight: 3,             // Thickness
+                        fillColor: "#f1c40f",  // Fill Color
+                        fillOpacity: 0.2,      // Light transparency
+                        interactive: false     // Click through to the map
+                    }
+                }).addTo(map);
+
+                // This automatically centers the map on the province
+                const bounds = L.geoJSON(data.features[0]).getBounds();
+                map.fitBounds(bounds);
+            }
+        })
+        .catch(err => console.error("Error loading Asti boundary:", err));
+}
+function initApp() {
+    // ... your existing map setup ...
+    map = L.map('map', { zoomControl: false }).setView(italyCenter, 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // Call the new boundary function
+    addAstiBoundary();
+    
+    // ... rest of your code ...
+}
 function addMarkerToMap(data, key) {
     const iconHtml = data.image 
         ? `<div style="width:40px; height:40px; border-radius:50%; border:3px solid white; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);"></div>`
