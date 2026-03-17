@@ -1,5 +1,4 @@
 // 1. CONFIGURATION
-// 1. CONFIGURATION
 const firebaseConfig = {
     apiKey: "AIzaSyCOzpc3cX32FQL8vZxNMi5nAvfdlWwLKrU",
     authDomain: "italy-road-reporter.firebaseapp.com",
@@ -17,13 +16,12 @@ const reportsRef = database.ref('reports');
 const italyCenter = [41.8719, 12.5674];
 let map, currentUserPos = null;
 
-// 2. INITIALIZATION (Merged Version)
+// 2. INITIALIZATION
 function initApp() {
     try {
         const savedLoc = JSON.parse(localStorage.getItem('lastLocation'));
         const startPos = savedLoc ? [savedLoc.lat, savedLoc.lng] : italyCenter;
         
-        // Setup Map with Asti focus
         map = L.map('map', { 
             zoomControl: false,
             minZoom: 9 
@@ -33,16 +31,12 @@ function initApp() {
             maxZoom: 19 
         }).addTo(map);
 
-        // Add the professional boundary overlay
         addAstiBoundary();
 
-        // Fix for mobile display
         setTimeout(() => { map.invalidateSize(); }, 500);
 
-        // Click handlers
         map.on('click', (e) => processLocation(e.latlng, 'manual'));
         
-        // Real-time Firebase Sync
         reportsRef.on('child_added', (snapshot) => {
             addMarkerToMap(snapshot.val(), snapshot.key);
         });
@@ -74,7 +68,6 @@ function addAstiBoundary() {
                     }
                 }).addTo(map);
                 
-                // Auto-center on the boundary
                 const bounds = L.geoJSON(data.features[0]).getBounds();
                 map.fitBounds(bounds);
             }
@@ -94,8 +87,6 @@ async function processLocation(latlng, type, imageData = null) {
         const roadData = await roadRes.json();
         const addr = roadData.address;
 
-        // --- NEW IMPROVED ASTI FILTER ---
-        // Postcodes in the province of Asti start with 14xxx
         const postcode = addr.postcode || "";
         const provinceCode = addr.province || addr.county || "";
         
@@ -104,14 +95,14 @@ async function processLocation(latlng, type, imageData = null) {
             postcode.startsWith("14") || 
             addr.city_district === "Asti"
         );
-		if (!isAsti && type === 'manual') {
-    console.log("Location rejected. Address found:", addr);
-		}
+
+        if (!isAsti && type === 'manual') {
+            console.log("Location rejected. Address found:", addr);
+        }
+
         if (type === 'manual') {
-            // This passes the true/false check to the popup
             showManualPopup(snappedLatLng, addr.road || addr.city || "Road in Asti", isAsti);
         } else {
-            // For camera reports, we block them immediately if not in Asti
             if (!isAsti) {
                 alert("🛑 Reports blocked: You are outside the Province of Asti boundary.");
                 return;
@@ -131,7 +122,7 @@ async function processLocation(latlng, type, imageData = null) {
     }
 }
 
-// 5. UI COMPONENTS (Markers & Popups)
+// 5. UI COMPONENTS
 function showManualPopup(latlng, roadName, isAsti) {
     const buttonStyle = isAsti ? "" : "background:#bdc3c7; cursor:not-allowed;";
     const buttonText = isAsti ? "Save Report" : "Outside Asti Area";
@@ -152,15 +143,27 @@ function showManualPopup(latlng, roadName, isAsti) {
 }
 
 function addMarkerToMap(data, key) {
-    // If status is fixed, use green. If pending, use blue/red.
-    const markerColor = data.status === "fixed" ? "#2ecc71" : "#e74c3c";
+    const markerColor = data.status === "resolved" ? "#2ecc71" : "#e74c3c";
     
     const iconHtml = data.image 
         ? `<div style="width:40px; height:40px; border-radius:50%; border:3px solid ${markerColor}; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);"></div>`
         : `<div style="width:20px; height:20px; background-color:${markerColor}; border-radius:50%; border:2px solid white;"></div>`;
 
-    // ... (rest of your marker code)
-}
+    const customIcon = L.divIcon({
+        html: iconHtml,
+        className: 'custom-icon',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
+    });
+
+    const marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
+    let content = `<div class="popup-form">
+        <span class="road-label">📍 ${data.road}</span>
+        ${data.image ? `<img src="${data.image}" class="preview-img" style="width:100%; border-radius:8px;">` : ''}
+        ${data.note ? `<p><b>Note:</b> ${data.note}</p>` : ''}
+        <hr><button onclick="deleteReport('${key}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:11px; width:100%;">🗑️ Delete</button>
+    </div>`;
+    marker.bindPopup(content);
 }
 
 // 6. UTILS & SYSTEM
@@ -169,14 +172,12 @@ async function handleManualSave(lat, lng, roadName) {
     const fileInput = document.getElementById('manualPhoto');
     const saveBtn = document.getElementById('manualSaveBtn');
 
-    // 1. Visual feedback for the user
     saveBtn.disabled = true;
     saveBtn.innerText = "Processing Photo...";
 
     try {
         let imageData = null;
 
-        // 2. If there is a file, wait for it to be processed
         if (fileInput.files && fileInput.files[0]) {
             imageData = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -185,17 +186,11 @@ async function handleManualSave(lat, lng, roadName) {
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        
-                        // Set standard size for cloud storage (600px wide)
                         const MAX_WIDTH = 600;
                         canvas.width = MAX_WIDTH;
                         canvas.height = img.height * (MAX_WIDTH / img.width);
-                        
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        
-                        // Convert to JPEG with 60% quality to keep file size small
-                        const base64 = canvas.toDataURL('image/jpeg', 0.6);
-                        resolve(base64);
+                        resolve(canvas.toDataURL('image/jpeg', 0.6));
                     };
                     img.onerror = reject;
                     img.src = e.target.result;
@@ -205,24 +200,21 @@ async function handleManualSave(lat, lng, roadName) {
             });
         }
 
-        // 3. Save to Firebase only AFTER image processing is done
         saveBtn.innerText = "Uploading...";
         await reportsRef.push({
             lat: lat,
             lng: lng,
             road: roadName,
             note: note,
-            image: imageData, // This will be null if no photo was selected
+            image: imageData,
             timestamp: Date.now()
         });
 
-        // 4. Cleanup
         map.closePopup();
         alert("✅ Report saved successfully!");
-
     } catch (error) {
         console.error("Save Error:", error);
-        alert("🛑 Error saving report. The image might be too large.");
+        alert("🛑 Error saving report.");
         saveBtn.disabled = false;
         saveBtn.innerText = "Try Again";
     }
@@ -255,9 +247,10 @@ function handleCameraUpload(event) {
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
             canvas.width = 600;
             canvas.height = img.height * (600 / img.width);
-            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             processLocation(currentUserPos, 'camera', canvas.toDataURL('image/jpeg', 0.6));
         };
         img.src = e.target.result;
