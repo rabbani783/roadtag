@@ -171,24 +171,64 @@ function addMarkerToMap(data, key) {
 async function handleManualSave(lat, lng, roadName) {
     const note = document.getElementById('manualNote').value;
     const fileInput = document.getElementById('manualPhoto');
-    if (fileInput.files && fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 600;
-                canvas.height = img.height * (600 / img.width);
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                reportsRef.push({ lat, lng, road: roadName, note, image: canvas.toDataURL('image/jpeg', 0.6), timestamp: Date.now() });
-                map.closePopup();
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-    } else {
-        reportsRef.push({ lat, lng, road: roadName, note, image: null, timestamp: Date.now() });
+    const saveBtn = document.getElementById('manualSaveBtn');
+
+    // 1. Visual feedback for the user
+    saveBtn.disabled = true;
+    saveBtn.innerText = "Processing Photo...";
+
+    try {
+        let imageData = null;
+
+        // 2. If there is a file, wait for it to be processed
+        if (fileInput.files && fileInput.files[0]) {
+            imageData = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Set standard size for cloud storage (600px wide)
+                        const MAX_WIDTH = 600;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * (MAX_WIDTH / img.width);
+                        
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        // Convert to JPEG with 60% quality to keep file size small
+                        const base64 = canvas.toDataURL('image/jpeg', 0.6);
+                        resolve(base64);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(fileInput.files[0]);
+            });
+        }
+
+        // 3. Save to Firebase only AFTER image processing is done
+        saveBtn.innerText = "Uploading...";
+        await reportsRef.push({
+            lat: lat,
+            lng: lng,
+            road: roadName,
+            note: note,
+            image: imageData, // This will be null if no photo was selected
+            timestamp: Date.now()
+        });
+
+        // 4. Cleanup
         map.closePopup();
+        alert("✅ Report saved successfully!");
+
+    } catch (error) {
+        console.error("Save Error:", error);
+        alert("🛑 Error saving report. The image might be too large.");
+        saveBtn.disabled = false;
+        saveBtn.innerText = "Try Again";
     }
 }
 
