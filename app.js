@@ -1,4 +1,5 @@
 // 1. CONFIGURATION
+// 1. CONFIGURATION
 const firebaseConfig = {
     apiKey: "AIzaSyCOzpc3cX32FQL8vZxNMi5nAvfdlWwLKrU",
     authDomain: "italy-road-reporter.firebaseapp.com",
@@ -151,20 +152,15 @@ function showManualPopup(latlng, roadName, isAsti) {
 }
 
 function addMarkerToMap(data, key) {
+    // If status is fixed, use green. If pending, use blue/red.
+    const markerColor = data.status === "fixed" ? "#2ecc71" : "#e74c3c";
+    
     const iconHtml = data.image 
-        ? `<div style="width:40px; height:40px; border-radius:50%; border:3px solid white; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);"></div>`
-        : `<div style="width:20px; height:20px; background-color:#3498db; border-radius:50%; border:2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`;
+        ? `<div style="width:40px; height:40px; border-radius:50%; border:3px solid ${markerColor}; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);"></div>`
+        : `<div style="width:20px; height:20px; background-color:${markerColor}; border-radius:50%; border:2px solid white;"></div>`;
 
-    const customIcon = L.divIcon({ html: iconHtml, className: 'custom-icon', iconSize: [40, 40], iconAnchor: [20, 20] });
-    const marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
-
-    let content = `<div class="popup-form">
-        <span class="road-label">📍 ${data.road}</span>
-        ${data.image ? `<img src="${data.image}" class="preview-img">` : ''}
-        ${data.note ? `<p><b>Note:</b> ${data.note}</p>` : ''}
-        <hr><button onclick="deleteReport('${key}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:11px; width:100%;">🗑️ Delete</button>
-    </div>`;
-    marker.bindPopup(content);
+    // ... (rest of your marker code)
+}
 }
 
 // 6. UTILS & SYSTEM
