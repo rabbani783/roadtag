@@ -284,28 +284,41 @@
 
     // Rendering della Tabella
     function render(dataList) {
+        const tbody = document.getElementById('tableBody');
+        if (!tbody) return;
+
         let sorted = [...dataList].sort((a, b) => {
             let v1 = a[currentSort.key] || '', v2 = b[currentSort.key] || '';
             if (currentSort.key === 'road') return currentSort.asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
             return currentSort.asc ? v1 - v2 : v2 - v1;
         });
 
-        const tbody = document.getElementById('tableBody');
         tbody.innerHTML = sorted.map(item => `
             <tr>
                 <td>${item.image ? `<img src="${item.image}" width="55" style="border-radius:6px; cursor:pointer" onclick="openPhoto('${item.image}')">` : '—'}</td>
-                <td><strong>${item.road}</strong><br><small style="color:#666">${item.note || ''}</small></td>
+                <td><strong>${item.road || 'Via Sconosciuta'}</strong><br><small style="color:#666">${item.note || ''}</small></td>
                 <td>
                     <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" class="coord-link">
                         ${item.lat ? item.lat.toFixed(5) : '0'}, ${item.lng ? item.lng.toFixed(5) : '0'}
                     </a>
                 </td>
-                <td>${new Date(item.timestamp).toLocaleDateString('it-IT')}</td>
+                <td>${item.timestamp ? new Date(item.timestamp).toLocaleDateString('it-IT') : '—'}</td>
                 <td><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'RISOLTO':'ATTIVO'}</span></td>
-                <td>
-                    <div style="display:flex">
-                        ${item.status !== 'resolved' ? `<button class="btn btn-success" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : ''}
-                        <button class="btn btn-danger" onclick="deleteItem('${item.id}')">X</button>
+                
+                <td style="width: 120px;">
+                    <div style="display: flex; gap: 8px; justify-content: flex-start; align-items: center;">
+                        
+                        <div style="width: 45px; height: 34px;">
+                            ${item.status !== 'resolved' ? 
+                                `<button class="btn btn-success" style="width:100%" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : 
+                                `<div style="width:100%; height:100%;"></div>` 
+                            }
+                        </div>
+
+                        <div style="width: 45px; height: 34px;">
+                            <button class="btn btn-danger" style="width:100%" onclick="deleteItem('${item.id}')">X</button>
+                        </div>
+
                     </div>
                 </td>
             </tr>
