@@ -307,23 +307,54 @@
 
     function openPhoto(s) { document.getElementById('fullPhoto').src=s; document.getElementById('lightbox').style.display='flex'; }
 
-    function exportExcel() {
-        try {
-            const data = masterData.map(i => ({
-                Via: i.road,
-                Lat: i.lat,
-                Lng: i.lng,
-                Data: new Date(i.timestamp).toLocaleString('it-IT'),
-                Stato: i.status === 'resolved' ? 'Risolto' : 'Attivo',
-                Nota: i.note || '',
-                Immagine: i.image
-            }));
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Asti_Report");
-            XLSX.writeFile(wb, "Report_Strade_Asti_" + new Date().toLocaleDateString() + ".xlsx");
-        } catch (e) { alert("Errore Export: " + e.message); }
+    ffunction exportExcel() {
+    console.log("Inizio esportazione sicura...");
+    try {
+        // We map the data to ensure NO huge image strings enter the Excel cells
+        const dataToExport = masterData.map(i => {
+            // Check if the image is a URL or a huge Base64 string
+            let photoStatus = "No Foto";
+            if (i.image) {
+                photoStatus = i.image.startsWith('data:image') ? "Immagine Base64 (Troppo grande per Excel)" : i.image;
+            }
+
+            return {
+                "Via / Posizione": i.road || 'N/A',
+                "Latitudine": i.lat || 0,
+                "Longitudine": i.lng || 0,
+                "Data Segnalazione": i.timestamp ? new Date(i.timestamp).toLocaleString('it-IT') : 'N/A',
+                "Stato Corrente": i.status === 'resolved' ? 'Risolto' : 'Attivo',
+                "Note Tecniche": (i.note || '').substring(0, 1000), // Safety cap for text
+                "Link Foto": photoStatus // We only put the link, not the data
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        
+        // Professional Touch: Set column widths so the Asti team can read it easily
+        ws['!cols'] = [
+            {wch: 30}, // Via
+            {wch: 15}, // Lat
+            {wch: 15}, // Lng
+            {wch: 20}, // Data
+            {wch: 15}, // Stato
+            {wch: 40}, // Note
+            {wch: 50}  // Link Foto
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Report_Asti");
+        
+        // Generate filename with current date
+        const today = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(wb, `Report_Strade_Asti_${today}.xlsx`);
+
+        console.log("Esportazione completata con successo.");
+    } catch (e) {
+        console.error("Dettagli Errore Export:", e);
+        alert("Errore durante l'esportazione: " + e.message);
     }
+}
 
     init();
 </script>
