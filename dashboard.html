@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asti RoadTag | Professional Admin</title>
+    <title>Asti RoadTag | Console Amministrativa Professionale</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/inter-ui/3.19.3/inter.css">
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
@@ -15,155 +15,148 @@
             --apple-bg: #F5F5F7;
             --apple-card: #FFFFFF;
             --apple-blue: #007AFF;
-            --apple-gray: #86868B;
             --apple-danger: #FF3B30;
             --apple-success: #34C759;
             --sidebar-w: 280px;
+            --row-h: 110px; /* Altezza fissa per stabilità UX */
         }
 
         body { 
             margin: 0; font-family: 'Inter', -apple-system, sans-serif; 
             background: var(--apple-bg); color: #1D1D1F; display: flex;
-            transition: 0.3s ease-in-out;
+            min-height: 100vh; overflow-x: hidden;
         }
 
-        /* --- APPLE SIDEBAR --- */
+        /* --- SIDEBAR --- */
         .sidebar {
-            width: var(--sidebar-w); background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(20px); height: 100vh; position: fixed; left: 0;
-            border-right: 1px solid #D2D2D7; display: flex; flex-direction: column;
-            z-index: 1000; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            width: var(--sidebar-w); background: #1D1D1F; color: white;
+            height: 100vh; position: fixed; left: 0; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; z-index: 1000;
         }
         body.menu-closed .sidebar { transform: translateX(-100%); }
         body.menu-closed .main-content { margin-left: 0; width: 100%; }
 
-        .sidebar-header { padding: 40px 30px; font-weight: 700; font-size: 1.5rem; letter-spacing: -0.5px; }
+        .sidebar-header { padding: 40px 30px; font-weight: 700; font-size: 1.4rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
         .nav-item {
-            padding: 14px 24px; margin: 4px 16px; border-radius: 12px; cursor: pointer;
-            color: #424245; font-weight: 500; transition: 0.2s;
+            padding: 16px 24px; margin: 5px 15px; border-radius: 12px; cursor: pointer;
+            transition: 0.2s; font-weight: 600;
         }
         .nav-item.active { background: var(--apple-blue); color: white; }
-        .nav-item:hover:not(.active) { background: rgba(0,0,0,0.05); }
+        .nav-item:hover:not(.active) { background: rgba(255,255,255,0.1); }
 
         /* --- MAIN CONTENT --- */
         .main-content {
             margin-left: var(--sidebar-w); width: calc(100% - var(--sidebar-w));
-            padding: 40px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 30px; transition: 0.4s ease; box-sizing: border-box;
         }
 
-        .apple-toolbar {
-            display: flex; align-items: center; gap: 20px; margin-bottom: 30px;
-            background: var(--apple-card); padding: 15px 25px; border-radius: 18px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+        /* TOOLBAR - UX GRID */
+        .toolbar {
+            display: grid; grid-template-columns: auto 1.5fr 1fr auto auto;
+            gap: 15px; align-items: center; margin-bottom: 25px;
+            background: white; padding: 20px; border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
         }
 
-        .search-input {
-            flex: 1; border: none; background: #F2F2F7; padding: 12px 20px;
-            border-radius: 12px; font-size: 1rem; outline: none;
+        .input-box {
+            padding: 12px 15px; border: 1.5px solid #D2D2D7; border-radius: 10px;
+            font-size: 1rem; outline: none; background: #FFF; width: 100%; box-sizing: border-box;
         }
 
-        /* --- ACCESSIBLE TABLE --- */
-        .card-table {
-            background: var(--apple-card); border-radius: 22px;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.08); overflow: hidden;
+        /* --- TABLE DESIGN --- */
+        .table-card {
+            background: white; border-radius: 24px; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
         }
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         
         th { 
             background: #FAFAFB; padding: 20px; text-align: left; 
-            font-size: 0.8rem; color: var(--apple-gray); text-transform: uppercase;
-            letter-spacing: 1px; border-bottom: 1px solid #F2F2F7;
+            font-size: 0.75rem; color: #86868B; text-transform: uppercase;
+            border-bottom: 2px solid #F2F2F7;
         }
 
-        /* SORT BUTTONS */
-        .sort-btn {
-            background: #E8E8ED; border: none; padding: 4px 10px; border-radius: 6px;
-            font-size: 0.7rem; cursor: pointer; margin-left: 5px; color: #1D1D1F;
+        .sort-btn { cursor: pointer; color: var(--apple-blue); font-weight: 900; margin-left: 5px; background: none; border: none; font-size: 1rem; }
+
+        tr { height: var(--row-h); border-bottom: 1px solid #F2F2F7; }
+        td { padding: 0 20px; vertical-align: middle; }
+
+        .img-box {
+            width: 80px; height: 80px; border-radius: 14px; background: #F2F2F7;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
+        .img-box img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
 
-        /* ROW STABILITY */
-        tr { height: 90px; transition: background 0.2s; }
-        tr:hover { background: #FBFBFC; }
-        td { padding: 0 20px; border-bottom: 1px solid #F2F2F7; font-size: 1.1rem; }
-
-        .img-placeholder {
-            width: 60px; height: 60px; background: #F2F2F7; 
-            border-radius: 12px; display: flex; align-items: center; 
-            justify-content: center; color: #D2D2D7; font-size: 0.8rem;
-        }
-
-        /* ACTIONS */
-        .action-box { display: flex; gap: 12px; justify-content: flex-end; align-items: center; width: 120px; }
-        .apple-btn {
+        /* ACTIONS - FIXED SLOTS */
+        .action-cell { display: flex; gap: 10px; align-items: center; justify-content: flex-end; }
+        .ui-btn {
             height: 44px; width: 50px; border-radius: 12px; border: none;
-            font-weight: 600; cursor: pointer; transition: transform 0.1s;
+            font-weight: 700; cursor: pointer; transition: 0.2s;
         }
-        .apple-btn:active { transform: scale(0.95); }
         .btn-ok { background: var(--apple-success); color: white; }
-        .btn-x { background: #F2F2F7; color: var(--apple-danger); }
+        .btn-del { background: #F2F2F7; color: var(--apple-danger); }
 
-        .badge {
-            padding: 8px 12px; border-radius: 10px; font-weight: 700; font-size: 0.85rem;
-        }
-        .badge-active { background: #FFF2F2; color: var(--apple-danger); }
-        .badge-fixed { background: #F2FBF2; color: var(--apple-success); }
-
-        /* PAGINATION */
-        .apple-pager {
-            display: flex; justify-content: space-between; align-items: center; margin-top: 30px;
-        }
+        /* PAGER */
+        .pager-row { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; }
         .page-link {
-            padding: 10px 18px; border-radius: 10px; background: white; border: 1px solid #D2D2D7;
-            cursor: pointer; font-weight: 600;
+            padding: 10px 18px; border-radius: 10px; border: 1px solid #D2D2D7;
+            background: white; cursor: pointer; font-weight: 700;
         }
         .page-link.active { background: var(--apple-blue); color: white; border-color: var(--apple-blue); }
+
+        #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
+
+<div id="lightbox" onclick="this.style.display='none'"><img id="fullPhoto" src="" style="max-width: 90%; max-height: 90%; border-radius: 20px;"></div>
 
 <aside class="sidebar">
     <div class="sidebar-header">RoadTag <span style="color:var(--apple-blue)">Asti</span></div>
     <div class="nav-item active" onclick="setFilter('all', this)">📊 Tutti i Rapporti</div>
     <div class="nav-item" onclick="setFilter('pending', this)">⚠️ Pericoli Attivi</div>
     <div class="nav-item" onclick="setFilter('resolved', this)">✅ Lavori Risolti</div>
-    <div style="margin-top:auto; padding: 20px;">
-        <div class="nav-item" onclick="exportExcel()" style="background:#E8E8ED; color:var(--apple-blue)">📥 Esporta Report</div>
+    <div style="margin-top:auto; padding: 30px;">
+        <button onclick="exportExcel()" style="width:100%; padding:15px; border-radius:14px; border:none; background:var(--apple-blue); color:white; font-weight:700; cursor:pointer; box-shadow: 0 4px 12px rgba(0,122,255,0.3);">📥 Esporta Excel</button>
     </div>
 </aside>
 
 <main class="main-content">
-    <div class="apple-toolbar">
+    <div class="toolbar">
         <button class="page-link" onclick="document.body.classList.toggle('menu-closed')">☰</button>
-        <input type="text" id="searchInput" class="search-input" placeholder="Cerca via..." onkeyup="updateTable()">
-        <input type="date" id="dateInput" class="search-input" style="max-width:200px" onchange="updateTable()">
-        <select id="rowsPerPage" class="search-input" style="max-width:120px" onchange="currentPage=1; updateTable()">
-			<option value="05">05 Righe</option>
-			<option value="10">10 Righe</option>
-			<option value="20">20 Righe</option>
-            <option value="50">50 Righe</option>
-            <option value="100">100 Righe</option>
+        <input type="text" id="searchInput" class="input-box" placeholder="Cerca via..." onkeyup="updateTable()">
+        
+        <input type="date" id="dateInput" class="input-box" onchange="updateTable()">
+        
+        <select id="rowsPerPage" class="input-box" onchange="currentPage=1; updateTable()">
+            <option value="5">05 per pagina</option>
+            <option value="10" selected>10 per pagina</option>
+            <option value="20">20 per pagina</option>
+            <option value="50">50 per pagina</option>
+            <option value="100">100 per pagina</option>
+            <option value="999999">Mostra Tutti</option>
         </select>
     </div>
 
-    <div class="card-table">
+    <div class="table-card">
         <table>
             <thead>
                 <tr>
-                    <th style="width: 100px;">Foto</th>
-                    <th>Via <button class="sort-btn" onclick="setSort('road')">↕</button></th>
-                    <th style="width: 150px;">Data <button class="sort-btn" onclick="setSort('timestamp')">↕</button></th>
-                    <th style="width: 150px;">Stato <button class="sort-btn" onclick="setSort('status')">↕</button></th>
-                    <th style="width: 150px; text-align:right;">Azioni</th>
+                    <th style="width: 120px;">Foto</th>
+                    <th style="width: 35%;">Via <button class="sort-btn" onclick="setSort('road')">↕</button></th>
+                    <th>Data <button class="sort-btn" onclick="setSort('timestamp')">↕</button></th>
+                    <th>Stato <button class="sort-btn" onclick="setSort('status')">↕</button></th>
+                    <th style="text-align:right;">Azioni</th>
                 </tr>
             </thead>
             <tbody id="tableBody"></tbody>
         </table>
     </div>
 
-    <div class="apple-pager">
-        <div id="pageInfo" style="color: var(--apple-gray); font-weight: 500;"></div>
+    <div class="pager-row">
+        <div id="pageInfo" style="font-weight: 600; color: #86868B;"></div>
         <div id="pageNumbers" style="display:flex; gap:8px;"></div>
     </div>
 </main>
@@ -204,53 +197,53 @@
     function updateTable() {
         const query = document.getElementById('searchInput').value.toLowerCase();
         const dateVal = document.getElementById('dateInput').value;
-        const rows = parseInt(document.getElementById('rowsPerPage').value);
+        const rowsCount = parseInt(document.getElementById('rowsPerPage').value);
 
-        let data = masterData.filter(i => {
+        let filtered = masterData.filter(i => {
             const mSearch = i.road.toLowerCase().includes(query);
             const mStatus = (currentFilter === 'all') || (currentFilter === 'resolved' ? i.status === 'resolved' : i.status !== 'resolved');
             const mDate = !dateVal || (new Date(i.timestamp).toISOString().split('T')[0] === dateVal);
             return mSearch && mStatus && mDate;
         });
 
-        data.sort((a,b) => {
+        filtered.sort((a,b) => {
             let v1 = a[currentSort.key] || '', v2 = b[currentSort.key] || '';
             return currentSort.asc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
         });
 
-        const total = data.length;
-        const pages = Math.ceil(total / rows);
-        const start = (currentPage - 1) * rows;
+        const total = filtered.length;
+        const pages = Math.ceil(total / rowsCount);
+        const start = (currentPage - 1) * rowsCount;
         
-        render(data.slice(start, start + rows));
+        render(filtered.slice(start, start + rowsCount));
         renderPager(total, pages);
     }
 
     function render(list) {
-        document.getElementById('tableBody').innerHTML = list.map(item => `
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = list.map(item => `
             <tr>
                 <td>
-                    ${item.image ? 
-                        `<img src="${item.image}" class="img-placeholder" style="cursor:pointer" onclick="window.open('${item.image}')">` : 
-                        `<div class="img-placeholder">N/A</div>`
-                    }
+                    <div class="img-box">
+                        ${item.image ? `<img src="${item.image}" onclick="openPhoto('${item.image}')">` : `<small style="color:#D2D2D7">No Foto</small>`}
+                    </div>
                 </td>
                 <td>
-                    <div style="font-weight:700; color:#1D1D1F">${item.road}</div>
-                    <div style="font-size:0.85rem; color:var(--apple-gray)">${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}</div>
+                    <div style="font-weight:700; font-size:1.1rem;">${item.road}</div>
+                    <div style="font-size:0.8rem; color:#86868B;">Coordinate: ${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}</div>
                 </td>
-                <td style="color:var(--apple-gray); font-weight:500">${new Date(item.timestamp).toLocaleDateString('it-IT')}</td>
+                <td style="font-weight:600; color:#424245;">${new Date(item.timestamp).toLocaleDateString('it-IT')}</td>
                 <td>
-                    <span class="badge ${item.status==='resolved'?'badge-fixed':'badge-active'}">
-                        ${item.status==='resolved'?'RISOLTO':'ATTIVO'}
+                    <span style="color:${item.status==='resolved'? 'var(--apple-success)' : 'var(--apple-danger)'}; font-weight:800; font-size:0.85rem;">
+                        ● ${item.status==='resolved'?'RISOLTO':'ATTIVO'}
                     </span>
                 </td>
                 <td>
-                    <div class="action-box">
+                    <div class="action-cell">
                         <div style="width:50px">
-                            ${item.status !== 'resolved' ? `<button class="apple-btn btn-ok" onclick="act('${item.id}','upd')">OK</button>` : ''}
+                            ${item.status !== 'resolved' ? `<button class="ui-btn btn-ok" onclick="act('${item.id}','upd')">OK</button>` : ''}
                         </div>
-                        <button class="apple-btn btn-x" onclick="act('${item.id}','del')">✕</button>
+                        <button class="ui-btn btn-del" onclick="act('${item.id}','del')">✕</button>
                     </div>
                 </td>
             </tr>
@@ -258,18 +251,21 @@
     }
 
     function renderPager(total, pages) {
-        document.getElementById('pageInfo').innerText = `Mostrando ${total} segnalazioni`;
+        document.getElementById('pageInfo').innerText = `Record: ${total} | Pagina ${currentPage} di ${pages || 1}`;
         let html = "";
-        for(let i=1; i<=pages; i++) {
-            html += `<button class="page-link ${i===currentPage?'active':''}" onclick="currentPage=${i}; updateTable()">${i}</button>`;
+        // Se mostriamo tutti, non serve il pager numerico
+        if(pages > 1 && pages < 50) {
+            for(let i=1; i<=pages; i++) {
+                html += `<button class="page-link ${i===currentPage?'active':''}" onclick="currentPage=${i}; updateTable()">${i}</button>`;
+            }
         }
         document.getElementById('pageNumbers').innerHTML = html;
     }
 
     function act(id, type) {
-        if(prompt("Password Admin:") !== "Asti123") return;
+        if(prompt("Asti Admin Password:") !== "Asti123") return;
         if(type === 'upd') reportsRef.child(id).update({status:'resolved'});
-        else if(confirm("Eliminare?")) reportsRef.child(id).remove();
+        else if(confirm("Cancellare definitivamente questa segnalazione?")) reportsRef.child(id).remove();
     }
 
     function setFilter(t, el) {
@@ -278,11 +274,24 @@
         currentFilter = t; currentPage = 1; updateTable();
     }
 
+    function openPhoto(s) { document.getElementById('fullPhoto').src=s; document.getElementById('lightbox').style.display='flex'; }
+
     function exportExcel() {
-        const ws = XLSX.utils.json_to_sheet(masterData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Asti_Reports");
-        XLSX.writeFile(wb, "Report_RoadTag_Asti.xlsx");
+        try {
+            const data = masterData.map(i => ({
+                Via: i.road,
+                Lat: i.lat,
+                Lng: i.lng,
+                Data: new Date(i.timestamp).toLocaleString('it-IT'),
+                Stato: i.status === 'resolved' ? 'Risolto' : 'Attivo',
+                Nota: i.note || '',
+                Immagine: i.image
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Asti_Report");
+            XLSX.writeFile(wb, "Report_Strade_Asti_" + new Date().toLocaleDateString() + ".xlsx");
+        } catch (e) { alert("Errore Export: " + e.message); }
     }
 
     init();
