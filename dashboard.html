@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asti RoadTag | Admin Panel</title>
+    <title>Asti RoadTag | Admin Advanced</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
@@ -22,32 +22,27 @@
         body { 
             margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; 
             background: var(--bg-light); color: #333; display: flex; min-height: 100vh;
-            overflow-x: hidden;
         }
 
-        /* --- RESPONSIVE SIDEBAR --- */
+        /* --- SIDEBAR --- */
         .sidebar {
             width: var(--sidebar-w); background: var(--primary-dark);
             color: white; height: 100vh; position: fixed; left: 0;
             transition: 0.3s ease; display: flex; flex-direction: column;
             box-shadow: 4px 0 10px rgba(0,0,0,0.1); z-index: 1000;
         }
-
-        /* Mobile State: Sidebar hidden by default */
         @media (max-width: 768px) {
             .sidebar { left: -260px; }
             body.menu-open .sidebar { left: 0; }
             .main-content { margin-left: 0 !important; width: 100% !important; }
         }
 
-        .sidebar-header { padding: 30px 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        
         .nav-item {
             padding: 18px 25px; cursor: pointer; color: #cbd5e0;
             border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600;
-            display: flex; align-items: center; gap: 12px; transition: 0.2s;
+            display: flex; align-items: center; gap: 12px;
         }
-        .nav-item:hover, .nav-item.active { color: white; background: var(--accent-blue); }
+        .nav-item.active { color: white; background: var(--accent-blue); }
 
         /* --- MAIN CONTENT --- */
         .main-content {
@@ -55,61 +50,72 @@
             padding: 20px; transition: all 0.3s ease; box-sizing: border-box;
         }
 
-        .top-row { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
-        .burger-btn { background: var(--primary-dark); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; display: block; }
-        .search-bar { flex-grow: 1; padding: 12px; border: 2px solid #cbd5e0; border-radius: 10px; font-size: 1rem; min-width: 200px; }
-
-        /* --- TABLE RESPONSIVENESS --- */
-        .table-container { 
-            background: white; border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-            overflow-x: auto; /* Allows sliding on mobile */
-            -webkit-overflow-scrolling: touch;
+        .controls-row { 
+            display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; align-items: center;
+            background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        table { width: 100%; border-collapse: collapse; min-width: 700px; }
-        th { background: #f8fafc; padding: 12px; text-align: left; font-size: 0.75rem; color: #444; text-transform: uppercase; border-bottom: 3px solid #e2e8f0; }
-        td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; }
-        
-        /* Buttons */
-        .btn { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
+
+        .search-bar, .date-input, .page-select { 
+            padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 0.9rem; 
+        }
+
+        /* --- TABLE --- */
+        .table-container { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th { background: #f8fafc; padding: 12px; text-align: left; font-size: 0.75rem; color: #444; border-bottom: 3px solid #e2e8f0; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+
+        /* --- PAGINATION --- */
+        .pagination-container {
+            display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 10px;
+        }
+        .pager-btn {
+            background: white; border: 1px solid #cbd5e0; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;
+        }
+        .pager-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pager-btn.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+
+        .btn { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
         .btn-success { background: var(--success-green); color: white; }
         .btn-danger { background: white; color: var(--danger-red); border: 1px solid var(--danger-red); }
 
-        .badge { padding: 4px 8px; border-radius: 4px; font-weight: 800; font-size: 0.7rem; }
-        .badge-urgent { background: #fee2e2; color: #b91c1c; }
-        .badge-fixed { background: #dcfce7; color: #15803d; }
-
-        /* Fullscreen Overlay */
         #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; }
-        #lightbox img { max-width: 95%; max-height: 90%; object-fit: contain; }
-
-        /* Overlay for mobile when menu is open */
-        .overlay { 
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; 
-        }
-        body.menu-open .overlay { display: block; }
     </style>
 </head>
-<body>
+<body class="menu-open">
 
-<div id="lightbox" onclick="this.style.display='none'"><img id="fullPhoto" src=""></div>
-<div class="overlay" onclick="document.body.classList.remove('menu-open')"></div>
+<div id="lightbox" onclick="this.style.display='none'"><img id="fullPhoto" src="" style="max-width: 90%; max-height: 90%;"></div>
 
 <aside class="sidebar">
-    <div class="sidebar-header">
-        <h2 style="margin:0">RoadTag Asti</h2>
+    <div style="padding: 25px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <h2 style="margin:0">Asti RoadTag</h2>
     </div>
-    <div class="nav-item active" onclick="filterBy('all', this); closeMenu()">📊 Tutti i Rapporti</div>
-    <div class="nav-item" onclick="filterBy('pending', this); closeMenu()">⚠️ Pericoli Attivi</div>
-    <div class="nav-item" onclick="filterBy('resolved', this); closeMenu()">✅ Lavori Risolti</div>
-    <div class="nav-item" onclick="exportExcel()" style="color: #4ade80; margin-top: 20px;">📥 Esporta Excel</div>
-    <div class="nav-item" onclick="window.open('index.html', '_blank')" style="margin-top: auto;">🚀 Apri Mappa</div>
+    <div class="nav-item active" onclick="setFilter('all', this)">📊 Tutti</div>
+    <div class="nav-item" onclick="setFilter('pending', this)">⚠️ Attivi</div>
+    <div class="nav-item" onclick="setFilter('resolved', this)">✅ Risolti</div>
+    <div class="nav-item" onclick="exportExcel()" style="color: #4ade80; margin-top: 20px;">📥 Excel</div>
 </aside>
 
 <main class="main-content">
-    <div class="top-row">
-        <button class="burger-btn" onclick="document.body.classList.toggle('menu-open')">☰</button>
-        <input type="text" id="searchInput" class="search-bar" placeholder="Cerca via..." onkeyup="handleSearch()">
+    <div class="controls-row">
+        <button class="pager-btn" onclick="document.body.classList.toggle('menu-open')">☰</button>
+        <input type="text" id="searchInput" class="search-bar" placeholder="Cerca via..." onkeyup="updateTable()">
+        
+        <div style="display:flex; align-items:center; gap:5px;">
+            <span style="font-size:0.8rem; font-weight:bold;">Data:</span>
+            <input type="date" id="dateInput" class="date-input" onchange="updateTable()">
+            <button class="pager-btn" onclick="document.getElementById('dateInput').value=''; updateTable()">Reset</button>
+        </div>
+
+        <div style="margin-left:auto; display:flex; align-items:center; gap:5px;">
+            <span style="font-size:0.8rem; font-weight:bold;">Mostra:</span>
+            <select id="rowsPerPage" class="page-select" onchange="currentPage=1; updateTable()">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+            </select>
+        </div>
     </div>
 
     <div class="table-container">
@@ -127,9 +133,19 @@
             <tbody id="tableBody"></tbody>
         </table>
     </div>
+
+    <div class="pagination-container">
+        <div id="pageInfo" style="font-size: 0.9rem; font-weight: bold;">Mostrando 0 di 0</div>
+        <div style="display: flex; gap: 5px;">
+            <button class="pager-btn" id="prevBtn" onclick="changePage(-1)">Precedente</button>
+            <div id="pageNumbers" style="display:flex; gap:5px;"></div>
+            <button class="pager-btn" id="nextBtn" onclick="changePage(1)">Successivo</button>
+        </div>
+    </div>
 </main>
 
 <script>
+    // 1. CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyCOzpc3cX32FQL8vZxNMi5nAvfdlWwLKrU",
         authDomain: "italy-road-reporter.firebaseapp.com",
@@ -142,28 +158,66 @@
 
     firebase.initializeApp(firebaseConfig);
     const reportsRef = firebase.database().ref('reports');
-    let masterData = [];
 
+    let masterData = [];
+    let currentFilter = 'all';
+    let currentPage = 1;
+
+    // 2. DATA HANDLING
     function init() {
         reportsRef.on('value', snap => {
             const val = snap.val();
             masterData = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
-            render(masterData);
+            updateTable();
         });
     }
 
-    function render(dataList) {
+    function updateTable() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const dateFilter = document.getElementById('dateInput').value;
+        const rowsPerPage = parseInt(document.getElementById('rowsPerPage').value);
+
+        // Filter Logic
+        let filtered = masterData.filter(item => {
+            const matchesSearch = item.road.toLowerCase().includes(query);
+            const matchesStatus = (currentFilter === 'all') || 
+                                 (currentFilter === 'resolved' ? item.status === 'resolved' : item.status !== 'resolved');
+            
+            let matchesDate = true;
+            if (dateFilter) {
+                const itemDate = new Date(item.timestamp).toISOString().split('T')[0];
+                matchesDate = (itemDate === dateFilter);
+            }
+            return matchesSearch && matchesStatus && matchesDate;
+        });
+
+        // Sort by Newest
+        filtered.sort((a,b) => b.timestamp - a.timestamp);
+
+        // Pagination Logic
+        const totalItems = filtered.length;
+        const totalPages = Math.ceil(totalItems / rowsPerPage);
+        if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+
+        const start = (currentPage - 1) * rowsPerPage;
+        const pageData = filtered.slice(start, start + rowsPerPage);
+
+        render(pageData);
+        renderPagination(totalItems, totalPages);
+    }
+
+    function render(data) {
         const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = dataList.sort((a,b) => b.timestamp - a.timestamp).map(item => `
+        tbody.innerHTML = data.map(item => `
             <tr>
-                <td><img src="${item.image}" width="50" style="border-radius:4px;" onclick="openPhoto('${item.image}')"></td>
+                <td><img src="${item.image}" width="50" style="border-radius:4px; cursor:pointer;" onclick="openPhoto('${item.image}')"></td>
                 <td><strong>${item.road}</strong></td>
-                <td><a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" style="font-size:0.8rem;">Mappa</a></td>
+                <td><a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" style="font-size:0.8rem; font-weight:bold;">📍 Mappa</a></td>
                 <td>${new Date(item.timestamp).toLocaleDateString('it-IT')}</td>
-                <td><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'OK':'ATTIVO'}</span></td>
+                <td><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'RISOLTO':'ATTIVO'}</span></td>
                 <td style="width: 110px;">
-                    <div style="display: flex; gap: 5px;">
-                        <div style="width: 40px; height: 30px;">
+                    <div style="display: flex; gap: 8px;">
+                        <div style="width: 45px; height: 32px;">
                             ${item.status !== 'resolved' ? `<button class="btn btn-success" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : ''}
                         </div>
                         <button class="btn btn-danger" onclick="deleteItem('${item.id}')">X</button>
@@ -173,28 +227,35 @@
         `).join('');
     }
 
-    function closeMenu() { document.body.classList.remove('menu-open'); }
-
-    function handleSearch() {
-        const q = document.getElementById('searchInput').value.toLowerCase();
-        render(masterData.filter(i => i.road.toLowerCase().includes(q)));
+    function renderPagination(total, pages) {
+        document.getElementById('pageInfo').innerText = `Rapporti: ${total} (Pagina ${currentPage} di ${pages || 1})`;
+        document.getElementById('prevBtn').disabled = (currentPage === 1);
+        document.getElementById('nextBtn').disabled = (currentPage === pages || pages === 0);
+        
+        let pNumbers = "";
+        for(let i=1; i<=pages; i++) {
+            pNumbers += `<button class="pager-btn ${i===currentPage?'active':''}" onclick="currentPage=${i}; updateTable()">${i}</button>`;
+        }
+        document.getElementById('pageNumbers').innerHTML = pNumbers;
     }
 
-    function filterBy(type, el) {
+    // 3. ACTIONS
+    function changePage(step) { currentPage += step; updateTable(); }
+    function setFilter(type, el) {
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         el.classList.add('active');
-        render(type === 'all' ? masterData : masterData.filter(i => type === 'resolved' ? i.status === 'resolved' : i.status !== 'resolved'));
+        currentFilter = type;
+        currentPage = 1;
+        updateTable();
     }
-
-    function updateStatus(id, s) { if(prompt("Password:")==="Asti123") reportsRef.child(id).update({status:s}); }
-    function deleteItem(id) { if(confirm("Elimina?") && prompt("Password:")==="Asti123") reportsRef.child(id).remove(); }
+    function updateStatus(id, s) { if(prompt("Password Amministratore:")==="Asti123") reportsRef.child(id).update({status:s}); }
+    function deleteItem(id) { if(confirm("Sicuro?") && prompt("Password:")==="Asti123") reportsRef.child(id).remove(); }
     function openPhoto(s) { document.getElementById('fullPhoto').src=s; document.getElementById('lightbox').style.display='flex'; }
-
     function exportExcel() {
         const ws = XLSX.utils.json_to_sheet(masterData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Reports");
-        XLSX.writeFile(wb, "Asti_Roads.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Asti_RoadTag");
+        XLSX.writeFile(wb, "Report_Completo_Asti.xlsx");
     }
 
     init();
