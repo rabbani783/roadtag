@@ -3,133 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asti RoadTag | Pannello Amministratore</title>
+    <title>Asti RoadTag | Admin Panel</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-	<script>
-    // 1. DEFINE FUNCTIONS FIRST (Prevents "not defined" errors)
-    function filterBy(type, el) {
-        console.log("Filtraggio per:", type);
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        el.classList.add('active');
-        
-        if (!masterData || masterData.length === 0) return;
-
-        if (type === 'all') {
-            render(masterData);
-        } else if (type === 'resolved') {
-            render(masterData.filter(i => i.status === 'resolved'));
-        } else {
-            render(masterData.filter(i => i.status !== 'resolved'));
-        }
-    }
-
-    function resortData(key) {
-        currentSort.asc = (currentSort.key === key) ? !currentSort.asc : true;
-        currentSort.key = key;
-        render(masterData);
-    }
-
-    function openPhoto(src) {
-        document.getElementById('fullPhoto').src = src;
-        document.getElementById('lightbox').style.display = 'flex';
-    }
-
-    // 2. FIREBASE CONFIG
-    const firebaseConfig = {
-        apiKey: "AIzaSyCOzpc3cX32FQL8vZxNMi5nAvfdlWwLKrU",
-        authDomain: "italy-road-reporter.firebaseapp.com",
-        projectId: "italy-road-reporter",
-        databaseURL: "https://italy-road-reporter-default-rtdb.europe-west1.firebasedatabase.app/",
-        storageBucket: "italy-road-reporter.firebasestorage.app",
-        messagingSenderId: "480453082341",
-        appId: "1:480453082341:web:7cd51e2256747f1003280c"
-    };
-
-    // 3. INITIALIZE & DATA LOGIC
-    firebase.initializeApp(firebaseConfig);
-    const reportsRef = firebase.database().ref('reports');
-    
-    let masterData = [];
-    let currentSort = { key: 'timestamp', asc: false };
-
-    function init() {
-        console.log("Tentativo di connessione a Firebase...");
-        reportsRef.on('value', snap => {
-            const val = snap.val();
-            console.log("Dati ricevuti da Firebase:", val);
-            masterData = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
-            
-            if (masterData.length === 0) {
-                console.warn("Il database è vuoto o il percorso 'reports' è errato.");
-            }
-            render(masterData);
-        }, error => {
-            console.error("Errore di Database:", error);
-            alert("Errore di connessione: " + error.message);
-        });
-    }
-
-    function render(dataList) {
-        const tbody = document.getElementById('tableBody');
-        if (!tbody) return;
-
-        let sorted = [...dataList].sort((a, b) => {
-            let v1 = a[currentSort.key] || '', v2 = b[currentSort.key] || '';
-            if (currentSort.key === 'road') return currentSort.asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
-            return currentSort.asc ? v1 - v2 : v2 - v1;
-        });
-
-        tbody.innerHTML = sorted.map(item => `
-            <tr>
-                <td>${item.image ? `<img src="${item.image}" width="55" style="border-radius:6px; cursor:pointer" onclick="openPhoto('${item.image}')">` : '—'}</td>
-                <td><strong>${item.road || 'Via Sconosciuta'}</strong><br><small style="color:#666">${item.note || ''}</small></td>
-                <td>
-                    <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" class="coord-link">
-                        ${item.lat ? item.lat.toFixed(5) : '0'}, ${item.lng ? item.lng.toFixed(5) : '0'}
-                    </a>
-                </td>
-                <td>${item.timestamp ? new Date(item.timestamp).toLocaleDateString('it-IT') : '—'}</td>
-                <td><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'RISOLTO':'ATTIVO'}</span></td>
-                <td>
-                    <div style="display:flex">
-                        ${item.status !== 'resolved' ? `<button class="btn btn-success" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : ''}
-                        <button class="btn btn-danger" onclick="deleteItem('${item.id}')">X</button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    function handleSearch() {
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        render(masterData.filter(i => i.road.toLowerCase().includes(query)));
-    }
-
-    function updateStatus(id, status) {
-        if (prompt("Password Amministratore:") === "Asti123") {
-            reportsRef.child(id).update({ status });
-        }
-    }
-
-    function deleteItem(id) {
-        if (confirm("Eliminare definitivamente?")) {
-            if (prompt("Password:") === "Asti123") reportsRef.child(id).remove();
-        }
-    }
-
-    function exportExcel() {
-        const rows = masterData.map(i => ({ Via: i.road, Lat: i.lat, Lng: i.lng, Stato: i.status }));
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Report");
-        XLSX.writeFile(wb, "Asti_Report.xlsx");
-    }
-
-    init();
-</script>
 
     <style>
         :root {
@@ -142,19 +20,25 @@
         }
 
         body { 
-            margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; 
             background: var(--bg-light); color: #333; display: flex; min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        /* --- SIDEBAR --- */
+        /* --- RESPONSIVE SIDEBAR --- */
         .sidebar {
             width: var(--sidebar-w); background: var(--primary-dark);
             color: white; height: 100vh; position: fixed; left: 0;
             transition: 0.3s ease; display: flex; flex-direction: column;
             box-shadow: 4px 0 10px rgba(0,0,0,0.1); z-index: 1000;
         }
-        body.menu-closed .sidebar { transform: translateX(-100%); }
-        body.menu-closed .main-content { margin-left: 0; width: 100%; }
+
+        /* Mobile State: Sidebar hidden by default */
+        @media (max-width: 768px) {
+            .sidebar { left: -260px; }
+            body.menu-open .sidebar { left: 0; }
+            .main-content { margin-left: 0 !important; width: 100% !important; }
+        }
 
         .sidebar-header { padding: 30px 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
@@ -165,56 +49,67 @@
         }
         .nav-item:hover, .nav-item.active { color: white; background: var(--accent-blue); }
 
-        /* --- CONTENUTO PRINCIPALE --- */
+        /* --- MAIN CONTENT --- */
         .main-content {
             margin-left: var(--sidebar-w); width: calc(100% - var(--sidebar-w));
-            padding: 30px; transition: all 0.3s ease; box-sizing: border-box;
+            padding: 20px; transition: all 0.3s ease; box-sizing: border-box;
         }
 
-        .top-row { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; }
-        .burger-btn { background: var(--primary-dark); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; }
-        .search-bar { padding: 12px 20px; width: 100%; max-width: 450px; border: 2px solid #cbd5e0; border-radius: 10px; font-size: 1rem; }
+        .top-row { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .burger-btn { background: var(--primary-dark); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; display: block; }
+        .search-bar { flex-grow: 1; padding: 12px; border: 2px solid #cbd5e0; border-radius: 10px; font-size: 1rem; min-width: 200px; }
 
-        /* --- TABELLA --- */
-        .table-container { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 850px; }
-        th { background: #f8fafc; padding: 15px; text-align: left; font-size: 0.75rem; color: #444; text-transform: uppercase; border-bottom: 3px solid #e2e8f0; cursor: pointer; }
-        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 1rem; vertical-align: middle; }
+        /* --- TABLE RESPONSIVENESS --- */
+        .table-container { 
+            background: white; border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            overflow-x: auto; /* Allows sliding on mobile */
+            -webkit-overflow-scrolling: touch;
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        th { background: #f8fafc; padding: 12px; text-align: left; font-size: 0.75rem; color: #444; text-transform: uppercase; border-bottom: 3px solid #e2e8f0; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; }
         
-        .coord-link { color: var(--accent-blue); font-family: monospace; font-size: 0.85rem; text-decoration: none; font-weight: bold; }
-        .coord-link:hover { text-decoration: underline; }
-
-        .btn { padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-success { background: var(--success-green); color: white; margin-right: 5px; }
+        /* Buttons */
+        .btn { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
+        .btn-success { background: var(--success-green); color: white; }
         .btn-danger { background: white; color: var(--danger-red); border: 1px solid var(--danger-red); }
 
-        .badge { padding: 5px 10px; border-radius: 4px; font-weight: 800; font-size: 0.75rem; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: 800; font-size: 0.7rem; }
         .badge-urgent { background: #fee2e2; color: #b91c1c; }
         .badge-fixed { background: #dcfce7; color: #15803d; }
 
+        /* Fullscreen Overlay */
         #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; }
+        #lightbox img { max-width: 95%; max-height: 90%; object-fit: contain; }
+
+        /* Overlay for mobile when menu is open */
+        .overlay { 
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; 
+        }
+        body.menu-open .overlay { display: block; }
     </style>
 </head>
 <body>
 
-<div id="lightbox" onclick="this.style.display='none'"><img id="fullPhoto" src="" style="max-width: 90%; max-height: 90%; border: 4px solid white; border-radius: 10px;"></div>
+<div id="lightbox" onclick="this.style.display='none'"><img id="fullPhoto" src=""></div>
+<div class="overlay" onclick="document.body.classList.remove('menu-open')"></div>
 
 <aside class="sidebar">
     <div class="sidebar-header">
         <h2 style="margin:0">RoadTag Asti</h2>
-        <p style="font-size: 0.75rem; opacity: 0.7; margin:5px 0 0">Console Amministrativa</p>
     </div>
-    <div class="nav-item active" onclick="filterBy('all', this)">📊 Tutti i Rapporti</div>
-    <div class="nav-item" onclick="filterBy('pending', this)">⚠️ Pericoli Attivi</div>
-    <div class="nav-item" onclick="filterBy('resolved', this)">✅ Lavori Risolti</div>
-    <div class="nav-item" onclick="exportExcel()" style="color: #4ade80; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">📥 Esporta Excel (.xlsx)</div>
-    <div class="nav-item" onclick="window.open('index.html', '_blank')" style="margin-top: auto;">🚀 Vai alla Mappa</div>
+    <div class="nav-item active" onclick="filterBy('all', this); closeMenu()">📊 Tutti i Rapporti</div>
+    <div class="nav-item" onclick="filterBy('pending', this); closeMenu()">⚠️ Pericoli Attivi</div>
+    <div class="nav-item" onclick="filterBy('resolved', this); closeMenu()">✅ Lavori Risolti</div>
+    <div class="nav-item" onclick="exportExcel()" style="color: #4ade80; margin-top: 20px;">📥 Esporta Excel</div>
+    <div class="nav-item" onclick="window.open('index.html', '_blank')" style="margin-top: auto;">🚀 Apri Mappa</div>
 </aside>
 
 <main class="main-content">
     <div class="top-row">
-        <button class="burger-btn" onclick="document.body.classList.toggle('menu-closed')">☰</button>
-        <input type="text" id="searchInput" class="search-bar" placeholder="Cerca via o note..." onkeyup="handleSearch()">
+        <button class="burger-btn" onclick="document.body.classList.toggle('menu-open')">☰</button>
+        <input type="text" id="searchInput" class="search-bar" placeholder="Cerca via..." onkeyup="handleSearch()">
     </div>
 
     <div class="table-container">
@@ -222,10 +117,10 @@
             <thead>
                 <tr>
                     <th>Foto</th>
-                    <th onclick="resortData('road')">Via ↕</th>
+                    <th>Via</th>
                     <th>Coordinate</th>
-                    <th onclick="resortData('timestamp')">Data ↕</th>
-                    <th onclick="resortData('status')">Stato ↕</th>
+                    <th>Data</th>
+                    <th>Stato</th>
                     <th>Azioni</th>
                 </tr>
             </thead>
@@ -233,8 +128,8 @@
         </table>
     </div>
 </main>
+
 <script>
-    // 1. CONFIGURATION
     const firebaseConfig = {
         apiKey: "AIzaSyCOzpc3cX32FQL8vZxNMi5nAvfdlWwLKrU",
         authDomain: "italy-road-reporter.firebaseapp.com",
@@ -247,54 +142,8 @@
 
     firebase.initializeApp(firebaseConfig);
     const reportsRef = firebase.database().ref('reports');
-    
     let masterData = [];
-    let currentSort = { key: 'timestamp', asc: false };
 
-    // 2. STABLE RENDER FUNCTION
-    function render(dataList) {
-        const tbody = document.getElementById('tableBody');
-        if (!tbody) return;
-
-        let sorted = [...dataList].sort((a, b) => {
-            let v1 = a[currentSort.key] || '', v2 = b[currentSort.key] || '';
-            if (currentSort.key === 'road') return currentSort.asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
-            return currentSort.asc ? v1 - v2 : v2 - v1;
-        });
-
-        tbody.innerHTML = sorted.map(item => `
-            <tr>
-                <td>${item.image ? `<img src="${item.image}" width="55" style="border-radius:6px; cursor:pointer" onclick="openPhoto('${item.image}')">` : '—'}</td>
-                <td><strong>${item.road || 'Via Sconosciuta'}</strong><br><small style="color:#666">${item.note || ''}</small></td>
-                <td>
-                    <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" class="coord-link">
-                        ${item.lat ? item.lat.toFixed(5) : '0'}, ${item.lng ? item.lng.toFixed(5) : '0'}
-                    </a>
-                </td>
-                <td>${item.timestamp ? new Date(item.timestamp).toLocaleDateString('it-IT') : '—'}</td>
-                <td><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'RISOLTO':'ATTIVO'}</span></td>
-                
-                <td style="width: 120px; min-width: 120px;">
-                    <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
-                        
-                        <div style="width: 45px; height: 32px; display: flex; justify-content: center;">
-                            ${item.status !== 'resolved' ? 
-                                `<button class="btn btn-success" style="width: 100%;" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : 
-                                `` /* Keeps the space empty but present */
-                            }
-                        </div>
-
-                        <div style="width: 45px; height: 32px;">
-                            <button class="btn btn-danger" style="width: 100%;" onclick="deleteItem('${item.id}')">X</button>
-                        </div>
-
-                    </div>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    // 3. YOUR LOGIC FUNCTIONS
     function init() {
         reportsRef.on('value', snap => {
             const val = snap.val();
@@ -303,56 +152,49 @@
         });
     }
 
+    function render(dataList) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = dataList.sort((a,b) => b.timestamp - a.timestamp).map(item => `
+            <tr>
+                <td><img src="${item.image}" width="50" style="border-radius:4px;" onclick="openPhoto('${item.image}')"></td>
+                <td><strong>${item.road}</strong></td>
+                <td><a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" style="font-size:0.8rem;">Mappa</a></td>
+                <td>${new Date(item.timestamp).toLocaleDateString('it-IT')}</td>
+                <td><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'OK':'ATTIVO'}</span></td>
+                <td style="width: 110px;">
+                    <div style="display: flex; gap: 5px;">
+                        <div style="width: 40px; height: 30px;">
+                            ${item.status !== 'resolved' ? `<button class="btn btn-success" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : ''}
+                        </div>
+                        <button class="btn btn-danger" onclick="deleteItem('${item.id}')">X</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function closeMenu() { document.body.classList.remove('menu-open'); }
+
+    function handleSearch() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        render(masterData.filter(i => i.road.toLowerCase().includes(q)));
+    }
+
     function filterBy(type, el) {
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         el.classList.add('active');
-        if (type === 'all') render(masterData);
-        else render(masterData.filter(i => type === 'resolved' ? i.status === 'resolved' : i.status !== 'resolved'));
+        render(type === 'all' ? masterData : masterData.filter(i => type === 'resolved' ? i.status === 'resolved' : i.status !== 'resolved'));
     }
 
-    function resortData(key) {
-        currentSort.asc = (currentSort.key === key) ? !currentSort.asc : true;
-        currentSort.key = key;
-        render(masterData);
-    }
+    function updateStatus(id, s) { if(prompt("Password:")==="Asti123") reportsRef.child(id).update({status:s}); }
+    function deleteItem(id) { if(confirm("Elimina?") && prompt("Password:")==="Asti123") reportsRef.child(id).remove(); }
+    function openPhoto(s) { document.getElementById('fullPhoto').src=s; document.getElementById('lightbox').style.display='flex'; }
 
-    function handleSearch() { 
-        const query = document.getElementById('searchInput').value.toLowerCase(); 
-        render(masterData.filter(i => i.road.toLowerCase().includes(query) || (i.note && i.note.toLowerCase().includes(query)))); 
-    } 
-
-    function updateStatus(id, status) { 
-        if (prompt("Password Amministratore:") === "Asti123") { 
-            reportsRef.child(id).update({ status }); 
-        } 
-    } 
-
-    function deleteItem(id) { 
-        if (confirm("Sei sicuro di voler eliminare questo rapporto ad Asti?")) { 
-            if (prompt("Inserire password di sicurezza:") === "Asti123") { 
-                reportsRef.child(id).remove(); 
-            } 
-        } 
-    } 
-
-    function openPhoto(src) { 
-        document.getElementById('fullPhoto').src = src; 
-        document.getElementById('lightbox').style.display = 'flex'; 
-    } 
-
-    function exportExcel() { 
-        const rows = masterData.map(i => ({ 
-            Via: i.road, 
-            Note: i.note || '', 
-            Latitudine: i.lat, 
-            Longitudine: i.lng, 
-            Data: new Date(i.timestamp).toLocaleString('it-IT'), 
-            Stato: i.status === 'resolved' ? 'Risolto' : 'Attivo' 
-        })); 
-        const ws = XLSX.utils.json_to_sheet(rows); 
-        const wb = XLSX.utils.book_new(); 
-        XLSX.utils.book_append_sheet(wb, ws, "Report_Strade_Asti"); 
-        XLSX.writeFile(wb, "Asti_Report_Tecnico.xlsx"); 
+    function exportExcel() {
+        const ws = XLSX.utils.json_to_sheet(masterData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Reports");
+        XLSX.writeFile(wb, "Asti_Roads.xlsx");
     }
 
     init();
