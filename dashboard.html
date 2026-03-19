@@ -8,6 +8,128 @@
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+	<script>
+    // 1. DEFINE FUNCTIONS FIRST (Prevents "not defined" errors)
+    function filterBy(type, el) {
+        console.log("Filtraggio per:", type);
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+        
+        if (!masterData || masterData.length === 0) return;
+
+        if (type === 'all') {
+            render(masterData);
+        } else if (type === 'resolved') {
+            render(masterData.filter(i => i.status === 'resolved'));
+        } else {
+            render(masterData.filter(i => i.status !== 'resolved'));
+        }
+    }
+
+    function resortData(key) {
+        currentSort.asc = (currentSort.key === key) ? !currentSort.asc : true;
+        currentSort.key = key;
+        render(masterData);
+    }
+
+    function openPhoto(src) {
+        document.getElementById('fullPhoto').src = src;
+        document.getElementById('lightbox').style.display = 'flex';
+    }
+
+    // 2. FIREBASE CONFIG
+    const firebaseConfig = {
+        apiKey: "AIzaSyCOzpc3cX32FQL8vZxNMi5nAvfdlWwLKrU",
+        authDomain: "italy-road-reporter.firebaseapp.com",
+        projectId: "italy-road-reporter",
+        databaseURL: "https://italy-road-reporter-default-rtdb.europe-west1.firebasedatabase.app/",
+        storageBucket: "italy-road-reporter.firebasestorage.app",
+        messagingSenderId: "480453082341",
+        appId: "1:480453082341:web:7cd51e2256747f1003280c"
+    };
+
+    // 3. INITIALIZE & DATA LOGIC
+    firebase.initializeApp(firebaseConfig);
+    const reportsRef = firebase.database().ref('reports');
+    
+    let masterData = [];
+    let currentSort = { key: 'timestamp', asc: false };
+
+    function init() {
+        console.log("Tentativo di connessione a Firebase...");
+        reportsRef.on('value', snap => {
+            const val = snap.val();
+            console.log("Dati ricevuti da Firebase:", val);
+            masterData = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
+            
+            if (masterData.length === 0) {
+                console.warn("Il database è vuoto o il percorso 'reports' è errato.");
+            }
+            render(masterData);
+        }, error => {
+            console.error("Errore di Database:", error);
+            alert("Errore di connessione: " + error.message);
+        });
+    }
+
+    function render(dataList) {
+        const tbody = document.getElementById('tableBody');
+        if (!tbody) return;
+
+        let sorted = [...dataList].sort((a, b) => {
+            let v1 = a[currentSort.key] || '', v2 = b[currentSort.key] || '';
+            if (currentSort.key === 'road') return currentSort.asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+            return currentSort.asc ? v1 - v2 : v2 - v1;
+        });
+
+        tbody.innerHTML = sorted.map(item => `
+            <tr>
+                <td>${item.image ? `<img src="${item.image}" width="55" style="border-radius:6px; cursor:pointer" onclick="openPhoto('${item.image}')">` : '—'}</td>
+                <td><strong>${item.road || 'Via Sconosciuta'}</strong><br><small style="color:#666">${item.note || ''}</small></td>
+                <td>
+                    <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" class="coord-link">
+                        ${item.lat ? item.lat.toFixed(5) : '0'}, ${item.lng ? item.lng.toFixed(5) : '0'}
+                    </a>
+                </td>
+                <td>${item.timestamp ? new Date(item.timestamp).toLocaleDateString('it-IT') : '—'}</td>
+                <td><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'RISOLTO':'ATTIVO'}</span></td>
+                <td>
+                    <div style="display:flex">
+                        ${item.status !== 'resolved' ? `<button class="btn btn-success" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : ''}
+                        <button class="btn btn-danger" onclick="deleteItem('${item.id}')">X</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function handleSearch() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        render(masterData.filter(i => i.road.toLowerCase().includes(query)));
+    }
+
+    function updateStatus(id, status) {
+        if (prompt("Password Amministratore:") === "Asti123") {
+            reportsRef.child(id).update({ status });
+        }
+    }
+
+    function deleteItem(id) {
+        if (confirm("Eliminare definitivamente?")) {
+            if (prompt("Password:") === "Asti123") reportsRef.child(id).remove();
+        }
+    }
+
+    function exportExcel() {
+        const rows = masterData.map(i => ({ Via: i.road, Lat: i.lat, Lng: i.lng, Stato: i.status }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Report");
+        XLSX.writeFile(wb, "Asti_Report.xlsx");
+    }
+
+    init();
+</script>
 
     <style>
         :root {
