@@ -20,11 +20,11 @@
         }
 
         body { 
-            margin: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; font-family: 'Segoe UI', Roboto, sans-serif; 
             background: var(--bg-light); color: #222; display: flex; min-height: 100vh;
         }
 
-        /* --- SIDEBAR (Push Layout) --- */
+        /* --- SIDEBAR --- */
         .sidebar {
             width: var(--sidebar-w); background: var(--primary-dark);
             color: white; height: 100vh; position: fixed; left: 0;
@@ -37,9 +37,9 @@
         .sidebar-header { padding: 30px 20px; background: rgba(0,0,0,0.2); text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
         .nav-item {
-            padding: 20px 25px; cursor: pointer; color: #cbd5e0;
-            border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 1.1rem; font-weight: 600;
-            display: flex; align-items: center; gap: 15px; transition: 0.2s;
+            padding: 18px 25px; cursor: pointer; color: #cbd5e0;
+            border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 1rem; font-weight: 600;
+            display: flex; align-items: center; gap: 12px;
         }
         .nav-item:hover, .nav-item.active { color: white; background: var(--accent-blue); }
 
@@ -50,27 +50,23 @@
         }
 
         .top-row { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; }
-        .burger-btn { background: var(--primary-dark); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; }
-        .search-bar { padding: 15px 20px; width: 100%; max-width: 500px; border: 2px solid #cbd5e0; border-radius: 10px; font-size: 1.1rem; }
-
-        /* --- STATS --- */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
-        .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 8px solid var(--accent-blue); }
-        .stat-card span { font-size: 0.9rem; font-weight: bold; color: #666; text-transform: uppercase; }
-        .stat-card p { font-size: 2.5rem; font-weight: 800; margin: 5px 0 0; }
+        .burger-btn { background: var(--primary-dark); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; }
+        .search-bar { padding: 12px 20px; width: 100%; max-width: 450px; border: 2px solid #cbd5e0; border-radius: 10px; font-size: 1rem; }
 
         /* --- TABLE --- */
-        .table-container { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #f8fafc; padding: 20px; text-align: left; font-size: 0.85rem; color: #444; text-transform: uppercase; border-bottom: 3px solid #e2e8f0; cursor: pointer; }
-        td { padding: 20px; border-bottom: 1px solid #f1f5f9; font-size: 1.1rem; vertical-align: middle; }
-        tr:hover { background: #fdfdfd; }
+        .table-container { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        th { background: #f8fafc; padding: 15px; text-align: left; font-size: 0.75rem; color: #444; text-transform: uppercase; border-bottom: 3px solid #e2e8f0; cursor: pointer; }
+        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 1rem; vertical-align: middle; }
+        
+        .coord-link { color: var(--accent-blue); font-family: monospace; font-size: 0.85rem; text-decoration: none; font-weight: bold; }
+        .coord-link:hover { text-decoration: underline; }
 
-        .btn { padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
+        .btn { padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
         .btn-success { background: var(--success-green); color: white; }
-        .btn-danger { background: #fff; color: var(--danger-red); border: 2px solid var(--danger-red); }
+        .btn-danger { background: white; color: var(--danger-red); border: 1px solid var(--danger-red); }
 
-        .badge { padding: 6px 12px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: 800; font-size: 0.75rem; }
         .badge-urgent { background: #fee2e2; color: #b91c1c; }
         .badge-fixed { background: #dcfce7; color: #15803d; }
 
@@ -79,11 +75,52 @@
 </head>
 <body>
 
-<div id="lightbox" onclick="this.style.display='none'"><img id="fullPhoto" src="" style="max-width: 90%; max-height: 90%; border: 5px solid white; border-radius: 10px;"></div>
+<div id="lightbox" onclick="this.style.display='none'"><img id="fullPhoto" src="" style="max-width: 90%; max-height: 90%; border: 4px solid white; border-radius: 10px;"></div>
 
 <aside class="sidebar">
     <div class="sidebar-header">
         <h2>Asti RoadTag</h2>
-        <p style="font-size: 0.8rem; opacity: 0.7;">Pannello di Controllo</p>
+        <p style="font-size: 0.75rem; opacity: 0.7;">Gestione Tecnica</p>
     </div>
-    <div class="nav-
+    <div class="nav-item active" onclick="filterBy('all', this)">📊 Tutti i Rapporti</div>
+    <div class="nav-item" onclick="filterBy('pending', this)">⚠️ Da Riparare</div>
+    <div class="nav-item" onclick="filterBy('resolved', this)">✅ Riparati</div>
+    <div class="nav-item" onclick="exportExcel()" style="color: #4ade80; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">📥 Esporta Excel (.xlsx)</div>
+    <div class="nav-item" onclick="window.open('index.html', '_blank')" style="margin-top: auto;">🚀 Vai alla Mappa</div>
+</aside>
+
+<main class="main-content">
+    <div class="top-row">
+        <button class="burger-btn" onclick="document.body.classList.toggle('menu-closed')">☰ Menu</button>
+        <input type="text" id="searchInput" class="search-bar" placeholder="Cerca via o coordinate..." onkeyup="handleSearch()">
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Foto</th>
+                    <th onclick="resortData('road')">Via ↕</th>
+                    <th>Coordinate (Lat, Lng)</th>
+                    <th onclick="resortData('timestamp')">Data ↕</th>
+                    <th onclick="resortData('status')">Stato ↕</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</main>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCOzpc3cX32FQL8vZxNMi5nAvfdlWwLKrU",
+        authDomain: "italy-road-reporter.firebaseapp.com",
+        projectId: "italy-road-reporter",
+        databaseURL: "https://italy-road-reporter-default-rtdb.europe-west1.firebasedatabase.app/",
+        storageBucket: "italy-road-reporter.firebasestorage.app",
+        messagingSenderId: "480453082341",
+        appId: "1:480453082341:web:7cd51e2256747f1003280c"
+    };
+
+    firebase.
