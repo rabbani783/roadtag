@@ -251,31 +251,11 @@
     let masterData = [];
     let currentSort = { key: 'timestamp', asc: false };
 
-    // 2. CORE FUNCTIONS
-    function init() {
-        console.log("Connessione in corso...");
-        reportsRef.on('value', snap => {
-            const val = snap.val();
-            console.log("Dati dal Database:", val); // GUARDA QUI NELLA CONSOLE (F12)
-            
-            if (!val) {
-                document.getElementById('tableBody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:50px;">Nessun dato trovato nel database "reports".</td></tr>';
-                return;
-            }
-
-            masterData = Object.keys(val).map(k => ({ id: k, ...val[k] }));
-            render(masterData);
-        }, err => {
-            console.error("Errore Firebase:", err);
-            alert("Errore: " + err.message);
-        });
-    }
-
+    // 2. STABLE RENDER FUNCTION
     function render(dataList) {
         const tbody = document.getElementById('tableBody');
         if (!tbody) return;
 
-        // Sorting logic
         let sorted = [...dataList].sort((a, b) => {
             let v1 = a[currentSort.key] || '', v2 = b[currentSort.key] || '';
             if (currentSort.key === 'road') return currentSort.asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
@@ -284,30 +264,45 @@
 
         tbody.innerHTML = sorted.map(item => `
             <tr>
-                <td style="width:70px;">${item.image ? `<img src="${item.image}" width="50" style="border-radius:4px; cursor:pointer" onclick="openPhoto('${item.image}')">` : '—'}</td>
-                <td style="width:250px;"><strong>${item.road || 'Via Sconosciuta'}</strong><br><small style="color:#666">${item.note || ''}</small></td>
-                <td style="width:150px;"><small>${item.lat ? item.lat.toFixed(5) : '0'}, ${item.lng ? item.lng.toFixed(5) : '0'}</small></td>
-                <td style="width:100px;">${item.timestamp ? new Date(item.timestamp).toLocaleDateString('it-IT') : '—'}</td>
-                <td style="width:100px;"><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'OK':'ATTIVO'}</span></td>
+                <td>${item.image ? `<img src="${item.image}" width="55" style="border-radius:6px; cursor:pointer" onclick="openPhoto('${item.image}')">` : '—'}</td>
+                <td><strong>${item.road || 'Via Sconosciuta'}</strong><br><small style="color:#666">${item.note || ''}</small></td>
+                <td>
+                    <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" class="coord-link">
+                        ${item.lat ? item.lat.toFixed(5) : '0'}, ${item.lng ? item.lng.toFixed(5) : '0'}
+                    </a>
+                </td>
+                <td>${item.timestamp ? new Date(item.timestamp).toLocaleDateString('it-IT') : '—'}</td>
+                <td><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'RISOLTO':'ATTIVO'}</span></td>
                 
-                <td style="width:120px; text-align:right;">
-                    <div style="display: inline-flex; gap: 5px; width: 100px; justify-content: flex-end;">
-                        <div style="width: 45px; height: 30px;">
+                <td style="width: 120px; min-width: 120px;">
+                    <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
+                        
+                        <div style="width: 45px; height: 32px; display: flex; justify-content: center;">
                             ${item.status !== 'resolved' ? 
-                                `<button class="btn btn-success" style="width:100%; padding:5px;" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : 
-                                `` 
+                                `<button class="btn btn-success" style="width: 100%;" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : 
+                                `` /* Keeps the space empty but present */
                             }
                         </div>
-                        <div style="width: 40px; height: 30px;">
-                            <button class="btn btn-danger" style="width:100%; padding:5px;" onclick="deleteItem('${item.id}')">X</button>
+
+                        <div style="width: 45px; height: 32px;">
+                            <button class="btn btn-danger" style="width: 100%;" onclick="deleteItem('${item.id}')">X</button>
                         </div>
+
                     </div>
                 </td>
             </tr>
         `).join('');
     }
 
-    // Altre funzioni necessarie
+    // 3. YOUR LOGIC FUNCTIONS
+    function init() {
+        reportsRef.on('value', snap => {
+            const val = snap.val();
+            masterData = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
+            render(masterData);
+        });
+    }
+
     function filterBy(type, el) {
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         el.classList.add('active');
@@ -321,63 +316,45 @@
         render(masterData);
     }
 
-    function updateStatus(id, status) {
-        if (prompt("Admin Password:") === "Asti123") reportsRef.child(id).update({ status });
+    function handleSearch() { 
+        const query = document.getElementById('searchInput').value.toLowerCase(); 
+        render(masterData.filter(i => i.road.toLowerCase().includes(query) || (i.note && i.note.toLowerCase().includes(query)))); 
+    } 
+
+    function updateStatus(id, status) { 
+        if (prompt("Password Amministratore:") === "Asti123") { 
+            reportsRef.child(id).update({ status }); 
+        } 
+    } 
+
+    function deleteItem(id) { 
+        if (confirm("Sei sicuro di voler eliminare questo rapporto ad Asti?")) { 
+            if (prompt("Inserire password di sicurezza:") === "Asti123") { 
+                reportsRef.child(id).remove(); 
+            } 
+        } 
+    } 
+
+    function openPhoto(src) { 
+        document.getElementById('fullPhoto').src = src; 
+        document.getElementById('lightbox').style.display = 'flex'; 
+    } 
+
+    function exportExcel() { 
+        const rows = masterData.map(i => ({ 
+            Via: i.road, 
+            Note: i.note || '', 
+            Latitudine: i.lat, 
+            Longitudine: i.lng, 
+            Data: new Date(i.timestamp).toLocaleString('it-IT'), 
+            Stato: i.status === 'resolved' ? 'Risolto' : 'Attivo' 
+        })); 
+        const ws = XLSX.utils.json_to_sheet(rows); 
+        const wb = XLSX.utils.book_new(); 
+        XLSX.utils.book_append_sheet(wb, ws, "Report_Strade_Asti"); 
+        XLSX.writeFile(wb, "Asti_Report_Tecnico.xlsx"); 
     }
 
-    function deleteItem(id) {
-        if (confirm("Eliminare?")) {
-            if (prompt("Admin Password:") === "Asti123") reportsRef.child(id).remove();
-        }
-    }
-
-    function openPhoto(src) {
-        document.getElementById('fullPhoto').src = src;
-        document.getElementById('lightbox').style.display = 'flex';
-    }
-
-    init();
-</script>
-    function handleSearch() {
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        render(masterData.filter(i => i.road.toLowerCase().includes(query) || (i.note && i.note.toLowerCase().includes(query))));
-    }
-
-    function updateStatus(id, status) {
-        if (prompt("Password Amministratore:") === "Asti123") {
-            reportsRef.child(id).update({ status });
-        }
-    }
-
-    function deleteItem(id) {
-        if (confirm("Sei sicuro di voler eliminare questo rapporto ad Asti?")) {
-            if (prompt("Inserire password di sicurezza:") === "Asti123") {
-                reportsRef.child(id).remove();
-            }
-        }
-    }
-
-    function openPhoto(src) {
-        document.getElementById('fullPhoto').src = src;
-        document.getElementById('lightbox').style.display = 'flex';
-    }
-
-    function exportExcel() {
-        const rows = masterData.map(i => ({
-            Via: i.road,
-            Note: i.note || '',
-            Latitudine: i.lat,
-            Longitudine: i.lng,
-            Data: new Date(i.timestamp).toLocaleString('it-IT'),
-            Stato: i.status === 'resolved' ? 'Risolto' : 'Attivo'
-        }));
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Report_Strade_Asti");
-        XLSX.writeFile(wb, "Asti_Report_Tecnico.xlsx");
-    }
-
-    // Avvio
     init();
 </script>
 </body>
