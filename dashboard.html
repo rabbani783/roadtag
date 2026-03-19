@@ -233,9 +233,8 @@
         </table>
     </div>
 </main>
-
 <script>
-    // Configurazione Firebase
+    // 1. CONFIGURATION
     const firebaseConfig = {
         apiKey: "AIzaSyCOzpc3cX32FQL8vZxNMi5nAvfdlWwLKrU",
         authDomain: "italy-road-reporter.firebaseapp.com",
@@ -252,41 +251,31 @@
     let masterData = [];
     let currentSort = { key: 'timestamp', asc: false };
 
-    // Inizializzazione dati
+    // 2. CORE FUNCTIONS
     function init() {
+        console.log("Connessione in corso...");
         reportsRef.on('value', snap => {
             const val = snap.val();
-            masterData = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
+            console.log("Dati dal Database:", val); // GUARDA QUI NELLA CONSOLE (F12)
+            
+            if (!val) {
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:50px;">Nessun dato trovato nel database "reports".</td></tr>';
+                return;
+            }
+
+            masterData = Object.keys(val).map(k => ({ id: k, ...val[k] }));
             render(masterData);
+        }, err => {
+            console.error("Errore Firebase:", err);
+            alert("Errore: " + err.message);
         });
     }
 
-    // Funzione di ordinamento
-    function resortData(key) {
-        currentSort.asc = (currentSort.key === key) ? !currentSort.asc : true;
-        currentSort.key = key;
-        render(masterData);
-    }
-
-    // Funzione di filtraggio (Risolve l'errore "filterBy is not defined")
-    function filterBy(type, el) {
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        el.classList.add('active');
-        
-        if (type === 'all') {
-            render(masterData);
-        } else if (type === 'resolved') {
-            render(masterData.filter(i => i.status === 'resolved'));
-        } else {
-            render(masterData.filter(i => i.status !== 'resolved'));
-        }
-    }
-
-    // Rendering della Tabella
     function render(dataList) {
         const tbody = document.getElementById('tableBody');
         if (!tbody) return;
 
+        // Sorting logic
         let sorted = [...dataList].sort((a, b) => {
             let v1 = a[currentSort.key] || '', v2 = b[currentSort.key] || '';
             if (currentSort.key === 'road') return currentSort.asc ? v1.localeCompare(v2) : v2.localeCompare(v1);
@@ -295,36 +284,60 @@
 
         tbody.innerHTML = sorted.map(item => `
             <tr>
-                <td>${item.image ? `<img src="${item.image}" width="55" style="border-radius:6px; cursor:pointer" onclick="openPhoto('${item.image}')">` : '—'}</td>
-                <td><strong>${item.road || 'Via Sconosciuta'}</strong><br><small style="color:#666">${item.note || ''}</small></td>
-                <td>
-                    <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" class="coord-link">
-                        ${item.lat ? item.lat.toFixed(5) : '0'}, ${item.lng ? item.lng.toFixed(5) : '0'}
-                    </a>
-                </td>
-                <td>${item.timestamp ? new Date(item.timestamp).toLocaleDateString('it-IT') : '—'}</td>
-                <td><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'RISOLTO':'ATTIVO'}</span></td>
+                <td style="width:70px;">${item.image ? `<img src="${item.image}" width="50" style="border-radius:4px; cursor:pointer" onclick="openPhoto('${item.image}')">` : '—'}</td>
+                <td style="width:250px;"><strong>${item.road || 'Via Sconosciuta'}</strong><br><small style="color:#666">${item.note || ''}</small></td>
+                <td style="width:150px;"><small>${item.lat ? item.lat.toFixed(5) : '0'}, ${item.lng ? item.lng.toFixed(5) : '0'}</small></td>
+                <td style="width:100px;">${item.timestamp ? new Date(item.timestamp).toLocaleDateString('it-IT') : '—'}</td>
+                <td style="width:100px;"><span class="badge ${item.status==='resolved'?'badge-fixed':'badge-urgent'}">${item.status==='resolved'?'OK':'ATTIVO'}</span></td>
                 
-                <td style="width: 120px;">
-                    <div style="display: flex; gap: 8px; justify-content: flex-start; align-items: center;">
-                        
-                        <div style="width: 45px; height: 34px;">
+                <td style="width:120px; text-align:right;">
+                    <div style="display: inline-flex; gap: 5px; width: 100px; justify-content: flex-end;">
+                        <div style="width: 45px; height: 30px;">
                             ${item.status !== 'resolved' ? 
-                                `<button class="btn btn-success" style="width:100%" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : 
-                                `<div style="width:100%; height:100%;"></div>` 
+                                `<button class="btn btn-success" style="width:100%; padding:5px;" onclick="updateStatus('${item.id}', 'resolved')">OK</button>` : 
+                                `` 
                             }
                         </div>
-
-                        <div style="width: 45px; height: 34px;">
-                            <button class="btn btn-danger" style="width:100%" onclick="deleteItem('${item.id}')">X</button>
+                        <div style="width: 40px; height: 30px;">
+                            <button class="btn btn-danger" style="width:100%; padding:5px;" onclick="deleteItem('${item.id}')">X</button>
                         </div>
-
                     </div>
                 </td>
             </tr>
         `).join('');
     }
 
+    // Altre funzioni necessarie
+    function filterBy(type, el) {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+        if (type === 'all') render(masterData);
+        else render(masterData.filter(i => type === 'resolved' ? i.status === 'resolved' : i.status !== 'resolved'));
+    }
+
+    function resortData(key) {
+        currentSort.asc = (currentSort.key === key) ? !currentSort.asc : true;
+        currentSort.key = key;
+        render(masterData);
+    }
+
+    function updateStatus(id, status) {
+        if (prompt("Admin Password:") === "Asti123") reportsRef.child(id).update({ status });
+    }
+
+    function deleteItem(id) {
+        if (confirm("Eliminare?")) {
+            if (prompt("Admin Password:") === "Asti123") reportsRef.child(id).remove();
+        }
+    }
+
+    function openPhoto(src) {
+        document.getElementById('fullPhoto').src = src;
+        document.getElementById('lightbox').style.display = 'flex';
+    }
+
+    init();
+</script>
     function handleSearch() {
         const query = document.getElementById('searchInput').value.toLowerCase();
         render(masterData.filter(i => i.road.toLowerCase().includes(query) || (i.note && i.note.toLowerCase().includes(query))));
