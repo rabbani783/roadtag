@@ -13,319 +13,227 @@ firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 const reportsRef = database.ref('reports');
 
-const italyCenter = [41.8719, 12.5674];
 let map, currentUserPos = null;
-let currentReportId = null; 
+let currentReportId = null;
+const markers = {}; // ✅ marker store
 
-// --- DEVICE IDENTITY ENGINE ---
-// Generates a unique ID for the phone to allow "Owner-Only" editing
+// --- DEVICE ID ---
 const getDeviceID = () => {
     let id = localStorage.getItem('asti_user_id');
     if (!id) {
-        id = 'user_' + Math.random().toString(36).substr(2, 9);
+        id = crypto.randomUUID(); // ✅ improved
         localStorage.setItem('asti_user_id', id);
     }
     return id;
 };
 
-// 2. INITIALIZATION
+// 2. INIT
 function initApp() {
     try {
-        // Initialize Map centered on Asti
-        map = L.map('map', { 
-            zoomControl: false,
-            minZoom: 9 
-        }).setView([44.90, 8.20], 13);
+        map = L.map('map', { zoomControl: false, minZoom: 9 })
+            .setView([44.90, 8.20], 13);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
             maxZoom: 19 
         }).addTo(map);
 
         addAstiBoundary();
-        setTimeout(() => { map.invalidateSize(); }, 500);
+        setTimeout(() => map.invalidateSize(), 500);
 
-        // Map Click Listener for snapping to roads
         map.on('click', (e) => processLocation(e.latlng, 'manual'));
-        
-        // Firebase Listeners for Real-time updates
-        reportsRef.on('child_added', (snapshot) => {
-            addMarkerToMap(snapshot.val(), snapshot.key);
+
+        // ✅ REAL-TIME (no reload)
+        reportsRef.on('child_added', (snap) => {
+            addMarkerToMap(snap.val(), snap.key);
         });
 
-        reportsRef.on('child_changed', () => { location.reload(); });
-        reportsRef.on('child_removed', () => { location.reload(); });
+        reportsRef.on('child_changed', (snap) => {
+            updateMarker(snap.key, snap.val());
+        });
+
+        reportsRef.on('child_removed', (snap) => {
+            removeMarker(snap.key);
+        });
 
         requestLocation(false);
-    } catch (e) { 
-        console.error("Initialization Error:", e); 
+    } catch (e) {
+        console.error("Init error:", e);
     }
 }
 
-// 3. GEOGRAPHICAL BOUNDARIES
+// 3. ASTI BOUNDARY
 function addAstiBoundary() {
-    const url = "https://nominatim.openstreetmap.org/search?format=geojson&q=Provincia+di+Asti&polygon_geojson=1&limit=1";
-    fetch(url).then(res => res.json()).then(data => {
-        if (data && data.features.length > 0) {
-            L.geoJSON(data.features[0], {
-                style: { 
-                    color: "#f1c40f", 
-                    weight: 3, 
-                    fillColor: "#f1c40f",
-                    fillOpacity: 0.1, 
-                    interactive: false 
-                }
-            }).addTo(map);
-            const bounds = L.geoJSON(data.features[0]).getBounds();
-            map.fitBounds(bounds);
-        }
-    }).catch(err => console.error("Boundary error:", err));
+    fetch("https://nominatim.openstreetmap.org/search?format=geojson&q=Provincia+di+Asti&polygon_geojson=1&limit=1")
+        .then(res => res.json())
+        .then(data => {
+            if (data.features?.length) {
+                const geo = L.geoJSON(data.features[0], {
+                    style: {
+                        color: "#f1c40f",
+                        weight: 3,
+                        fillOpacity: 0.1,
+                        interactive: false
+                    }
+                }).addTo(map);
+                map.fitBounds(geo.getBounds());
+            }
+        });
 }
 
-// 4. CORE PROCESSING (Includes Road Snapping)
+// 4. PROCESS LOCATION
 async function processLocation(latlng, type, imageData = null) {
     try {
-        // OSRM Road Snapping Logic
-        const res = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${latlng.lng},${latlng.lat}?number=1`);
-        const data = await res.json();
-        const snapped = data.waypoints[0].location;
-        const snappedLatLng = { lat: snapped[1], lng: snapped[0] };
-        
-        const roadRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${snappedLatLng.lat}&lon=${snappedLatLng.lng}&zoom=18&addressdetails=1`);
+        let snappedLatLng = latlng;
+
+        // ✅ SAFE OSRM
+        try {
+            const res = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${latlng.lng},${latlng.lat}?number=1`);
+            const data = await res.json();
+
+            if (data.waypoints?.length) {
+                const s = data.waypoints[0].location;
+                snappedLatLng = { lat: s[1], lng: s[0] };
+            }
+        } catch {
+            console.warn("OSRM failed, using raw coords");
+        }
+
+        const roadRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${snappedLatLng.lat}&lon=${snappedLatLng.lng}`);
         const roadData = await roadRes.json();
         const addr = roadData.address || {};
-        
-        const isAsti = (addr.postcode && addr.postcode.startsWith("14")) || (addr.county && addr.county.includes("Asti"));
+
+        const isAsti = (addr.postcode?.startsWith("14")) || (addr.county?.includes("Asti"));
 
         if (type === 'manual') {
-            showManualPopup(snappedLatLng, addr.road || "Strada ad Asti", isAsti);
-        } else {
-            if (!isAsti) {
-                alert("🛑 Reports blocked: You are outside the Province of Asti boundary.");
-                return;
-            }
-            reportsRef.push({ 
-                lat: snappedLatLng.lat, 
-                lng: snappedLatLng.lng, 
-                road: addr.road || "Strada ad Asti", 
-                note: "Photo Report", 
-                image: imageData, 
-                status: "active",
-                severity: "medio", // Default severity
-                timestamp: Date.now(),
-                ownerID: getDeviceID() // Locked to this phone
-            });
-            alert("✅ Report saved!");
-        }
-    } catch (err) { 
-        console.error("Process Error:", err); 
-    }
-}
-
-// 5. UI COMPONENTS
-function showManualPopup(latlng, roadName, isAsti) {
-    const buttonStyle = isAsti ? "background:#34C759;" : "background:#bdc3c7; cursor:not-allowed;";
-    const buttonText = isAsti ? "Salva Segnalazione" : "Fuori Area Asti";
-    const disabledAttr = isAsti ? "" : "disabled";
-
-    const formHtml = `
-        <div class="popup-form" style="padding:10px; min-width:240px; font-family: -apple-system, sans-serif;">
-            <span class="road-label" style="font-weight:bold; color:#e74c3c; display:block; margin-bottom:10px;">📍 ${roadName}</span>
-            
-            <label style="font-size:0.75rem; color:#86868B; font-weight:700; text-transform:uppercase;">Note</label>
-            <textarea id="manualNote" placeholder="Dettagli sul danno..." style="width:100%; height:50px; border-radius:8px; border:1px solid #ddd; padding:8px; margin-bottom:12px; font-family:inherit;"></textarea>
-            
-            <label style="font-size:0.75rem; color:#86868B; font-weight:700; text-transform:uppercase;">Livello Danno (Standard IT)</label>
-            <select id="manualSeverity" style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; margin-bottom:12px; background:white; font-family:inherit; font-weight:600;">
-                <option value="none">🟢 Nessun danno (None)</option>
-                <option value="lieve">🟡 Lieve (Minor)</option>
-                <option value="medio" selected>🟠 Medio (Medium)</option>
-                <option value="grave">🔴 Grave (Severe)</option>
-                <option value="critico">⚫ Critico (Emergency)</option>
-            </select>
-
-            <label style="font-size:0.75rem; color:#86868B; font-weight:700; text-transform:uppercase;">Foto</label>
-            <input type="file" id="manualPhoto" accept="image/*" style="width:100%; margin-bottom:15px; font-size:0.8rem;">
-            
-            <button id="manualSaveBtn" class="save-btn" ${disabledAttr} 
-                style="${buttonStyle} color:white; border:none; padding:14px; width:100%; border-radius:12px; font-weight:bold; cursor:pointer;"
-                onclick="handleManualSave(${latlng.lat}, ${latlng.lng}, '${roadName.replace(/'/g, "\\'")}')">
-                ${buttonText}
-            </button>
-        </div>`;
-    L.popup().setLatLng(latlng).setContent(formHtml).openOn(map);
-}
-function addMarkerToMap(data, key) {
-    const myID = getDeviceID();
-    const isOwner = (data.ownerID === myID);
-    
-    // Logic for 5 Levels of Severity
-    let ringColor = "#86868B"; // Default Gray
-    if(data.severity === "none") ringColor = "#34C759";    // Green
-    if(data.severity === "lieve") ringColor = "#FFCC00";   // Yellow
-    if(data.severity === "medio") ringColor = "#FF9500";   // Orange
-    if(data.severity === "grave") ringColor = "#FF3B30";   // Red
-    if(data.severity === "critico") ringColor = "#1D1D1F"; // Black
-
-    const iconHtml = data.image 
-        ? `<div style="width:42px; height:42px; border-radius:50%; border:3px solid ${ringColor}; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"></div>`
-        : `<div style="width:24px; height:24px; background-color:${ringColor}; border-radius:50%; border:2px solid white;"></div>`;
-
-    const customIcon = L.divIcon({
-        html: iconHtml,
-        className: 'custom-icon',
-        iconSize: [42, 42],
-        iconAnchor: [21, 21]
-    });
-
-    const marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
-
-    marker.on('click', () => { 
-        openLightbox(key, data.image, data.road, data.severity, isOwner); 
-    });
-}
-
-// 6. LIGHTBOX & SEVERITY LOCK
-function openLightbox(id, imageUrl, roadName, currentSev, isOwner) {
-    currentReportId = id;
-    const lightbox = document.getElementById('lightbox');
-    const fullPhoto = document.getElementById('fullPhoto');
-    const modalInfo = document.getElementById('modalInfo');
-
-    if (!lightbox || !fullPhoto) return;
-
-    fullPhoto.src = imageUrl || "";
-    modalInfo.innerText = roadName || "Segnalazione Asti";
-    
-    // SEVERITY LOCK: Disable buttons if severity is already set to something specific
-    const sevContainer = document.querySelector('.severity-grid');
-    if (sevContainer) {
-        if (currentSev && currentSev !== "medio") {
-            sevContainer.style.opacity = "0.5";
-            sevContainer.style.pointerEvents = "none";
-        } else {
-            sevContainer.style.opacity = "1";
-            sevContainer.style.pointerEvents = "auto";
-        }
-    }
-
-    // Highlighting selection logic
-    document.querySelectorAll('.sev-btn').forEach(btn => {
-        const btnLevel = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
-        btn.style.border = (btnLevel === currentSev) ? '3px solid currentColor' : '2px solid transparent';
-    });
-
-    // OWNER DELETE BUTTON: Shows only if this phone created the report
-    let delBtn = document.getElementById('ownerDelBtn');
-    if (delBtn) delBtn.remove();
-    
-    if (isOwner) {
-        delBtn = document.createElement('button');
-        delBtn.id = 'ownerDelBtn';
-        delBtn.innerText = "🗑️ Elimina la mia segnalazione";
-        delBtn.style = "width:100%; margin-top:20px; padding:15px; background:#F2F2F7; color:#FF3B30; border:none; border-radius:14px; font-weight:bold; cursor:pointer;";
-        delBtn.onclick = () => { 
-            if(confirm("Sei sicuro di voler eliminare questo report?")) { 
-                reportsRef.child(id).remove(); 
-                closeLightbox(); 
-            } 
-        };
-        const sidePanel = document.querySelector('.modal-side-panel') || document.querySelector('.modal-content');
-        sidePanel.appendChild(delBtn);
-    }
-    
-    lightbox.style.display = 'flex';
-}
-
-function updateSev(level, element) {
-    if (!currentReportId) return;
-    
-    // UI selection update
-    document.querySelectorAll('.sev-btn').forEach(btn => btn.style.border = '2px solid transparent');
-    element.style.border = '3px solid currentColor';
-
-    // Firebase Update
-    reportsRef.child(currentReportId).update({ severity: level });
-}
-
-function closeLightbox() { 
-    document.getElementById('lightbox').style.display = 'none'; 
-    currentReportId = null; 
-}
-
-// 7. UTILS & SYSTEM
-async function handleManualSave(lat, lng, roadName) {
-    const note = document.getElementById('manualNote').value;
-    const severity = document.getElementById('manualSeverity').value; // New logic
-    const fileInput = document.getElementById('manualPhoto');
-    const saveBtn = document.getElementById('manualSaveBtn');
-
-    saveBtn.disabled = true;
-    saveBtn.innerText = "Invio...";
-
-    try {
-        let imageData = null;
-        if (fileInput.files && fileInput.files[0]) {
-            imageData = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.readAsDataURL(fileInput.files[0]);
-            });
+            showManualPopup(snappedLatLng, addr.road || "Strada", isAsti);
+            return;
         }
 
-        await reportsRef.push({
-            lat: lat,
-            lng: lng,
-            road: roadName,
-            note: note || "",
-            severity: severity, // Correctly saves one of the 5 levels
+        if (!isAsti) return alert("Fuori Asti!");
+
+        reportsRef.push({
+            ...snappedLatLng,
+            road: addr.road || "Strada",
+            severity: "medio",
             image: imageData,
-            status: "active",
             timestamp: Date.now(),
             ownerID: getDeviceID()
         });
 
-        map.closePopup();
-    } catch (error) {
-        alert("Errore salvataggio!");
-        saveBtn.disabled = false;
+    } catch (e) {
+        console.error(e);
     }
 }
 
-function requestLocation(doFly) {
-    navigator.geolocation.getCurrentPosition((pos) => {
-        currentUserPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        localStorage.setItem('lastLocation', JSON.stringify(currentUserPos));
-        if (doFly) map.flyTo([currentUserPos.lat, currentUserPos.lng], 17);
-    }, (err) => console.warn(err), { enableHighAccuracy: true });
-}
+// 5. POPUP
+function showManualPopup(latlng, roadName, isAsti) {
+    const popup = L.popup().setLatLng(latlng).setContent(`
+        <div style="padding:10px;">
+            <b>📍 ${roadName}</b><br><br>
 
-function verifyLocationThenCamera() {
-    navigator.geolocation.getCurrentPosition((pos) => {
-        currentUserPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        document.getElementById('hiddenCameraInput').click();
-    }, () => alert("Il GPS è richiesto per segnalare!"), { enableHighAccuracy: true });
-}
+            <textarea id="manualNote" placeholder="Note..." style="width:100%;"></textarea><br><br>
 
-function handleCameraUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+            <select id="manualSeverity" style="width:100%;">
+                <option value="none">🟢 Nessun danno</option>
+                <option value="lieve">🟡 Lieve</option>
+                <option value="medio" selected>🟠 Medio</option>
+                <option value="grave">🔴 Grave</option>
+                <option value="critico">⚫ Critico</option>
+            </select><br><br>
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const MAX_WIDTH = 600;
-            canvas.width = MAX_WIDTH;
-            canvas.height = img.height * (MAX_WIDTH / img.width);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            processLocation(currentUserPos, 'camera', canvas.toDataURL('image/jpeg', 0.6));
+            <input type="file" id="manualPhoto"><br><br>
+
+            <button id="manualSaveBtn" ${!isAsti ? "disabled" : ""}>
+                ${isAsti ? "Salva" : "Fuori area"}
+            </button>
+        </div>
+    `).openOn(map);
+
+    // ✅ SAFE EVENT
+    setTimeout(() => {
+        const btn = document.getElementById('manualSaveBtn');
+        if (!btn || !isAsti) return;
+
+        btn.onclick = async () => {
+            const note = document.getElementById('manualNote').value;
+            const severity = document.getElementById('manualSeverity').value;
+            const file = document.getElementById('manualPhoto').files[0];
+
+            let imageData = null;
+
+            if (file) {
+                imageData = await new Promise(res => {
+                    const reader = new FileReader();
+                    reader.onload = e => res(e.target.result);
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            reportsRef.push({
+                lat: latlng.lat,
+                lng: latlng.lng,
+                road: roadName,
+                note,
+                severity,
+                image: imageData,
+                timestamp: Date.now(),
+                ownerID: getDeviceID()
+            });
+
+            map.closePopup();
         };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+    }, 100);
 }
 
-// 8. LAUNCH
+// 6. MARKERS
+function addMarkerToMap(data, key) {
+    const colors = {
+        none: "#34C759",
+        lieve: "#FFCC00",
+        medio: "#FF9500",
+        grave: "#FF3B30",
+        critico: "#1D1D1F"
+    };
+
+    const color = colors[data.severity] || "#999";
+
+    const icon = L.divIcon({
+        html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2px solid white;"></div>`,
+        className: ''
+    });
+
+    const marker = L.marker([data.lat, data.lng], { icon }).addTo(map);
+
+    markers[key] = marker; // ✅ store
+
+    marker.on('click', () => {
+        currentReportId = key;
+        alert(`${data.road} (${data.severity})`);
+    });
+}
+
+function updateMarker(key, data) {
+    removeMarker(key);
+    addMarkerToMap(data, key);
+}
+
+function removeMarker(key) {
+    if (markers[key]) {
+        map.removeLayer(markers[key]);
+        delete markers[key];
+    }
+}
+
+// 7. LOCATION
+function requestLocation(fly) {
+    navigator.geolocation.getCurrentPosition(pos => {
+        currentUserPos = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+        };
+        if (fly) map.flyTo([currentUserPos.lat, currentUserPos.lng], 17);
+    });
+}
+
+// 8. START
 window.onload = initApp;
