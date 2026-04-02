@@ -15,12 +15,12 @@ const reportsRef = database.ref('reports');
 
 const italyCenter = [41.8719, 12.5674];
 let map, currentUserPos = null;
+let currentReportId = null; // Global tracker for the Lightbox
 
 // 2. INITIALIZATION
 function initApp() {
     try {
         const savedLoc = JSON.parse(localStorage.getItem('lastLocation'));
-        const startPos = savedLoc ? [savedLoc.lat, savedLoc.lng] : italyCenter;
         
         map = L.map('map', { 
             zoomControl: false,
@@ -37,8 +37,14 @@ function initApp() {
 
         map.on('click', (e) => processLocation(e.latlng, 'manual'));
         
+        // Listen for new reports AND updates (important for severity changes)
         reportsRef.on('child_added', (snapshot) => {
             addMarkerToMap(snapshot.val(), snapshot.key);
+        });
+
+        reportsRef.on('child_changed', (snapshot) => {
+            // Refresh marker if severity or status changes
+            location.reload(); 
         });
 
         reportsRef.on('child_removed', () => {
@@ -63,11 +69,10 @@ function addAstiBoundary() {
                         color: "#f1c40f",
                         weight: 3,
                         fillColor: "#f1c40f",
-                        fillOpacity: 0.15,
+                        fillOpacity: 0.1,
                         interactive: false
                     }
                 }).addTo(map);
-                
                 const bounds = L.geoJSON(data.features[0]).getBounds();
                 map.fitBounds(bounds);
             }
@@ -96,133 +101,137 @@ async function processLocation(latlng, type, imageData = null) {
             addr.city_district === "Asti"
         );
 
-        if (!isAsti && type === 'manual') {
-            console.log("Location rejected. Address found:", addr);
-        }
-
         if (type === 'manual') {
-            showManualPopup(snappedLatLng, addr.road || addr.city || "Road in Asti", isAsti);
+            showManualPopup(snappedLatLng, addr.road || addr.city || "Strada ad Asti", isAsti);
         } else {
             if (!isAsti) {
-                alert("🛑 Reports blocked: You are outside the Province of Asti boundary.");
+                alert("🛑 Segnalazione Bloccata: Sei fuori dai confini della Provincia di Asti.");
                 return;
             }
             reportsRef.push({ 
                 lat: snappedLatLng.lat, 
                 lng: snappedLatLng.lng, 
-                road: addr.road || addr.city || "Road in Asti", 
-                note: "Photo Report", 
+                road: addr.road || addr.city || "Strada ad Asti", 
+                note: "Report Foto", 
                 image: imageData, 
+                status: "active",
+                severity: "medio", // Default severity
                 timestamp: Date.now() 
             });
-            alert("✅ Report saved!");
+            alert("✅ Segnalazione Salvata!");
         }
-    } catch (err) { 
-        console.error(err);
-    }
+    } catch (err) { console.error(err); }
 }
 
-// 5. UI COMPONENTS
-function showManualPopup(latlng, roadName, isAsti) {
-    const buttonStyle = isAsti ? "" : "background:#bdc3c7; cursor:not-allowed;";
-    const buttonText = isAsti ? "Save Report" : "Outside Asti Area";
-    const disabledAttr = isAsti ? "" : "disabled";
-
-    const formHtml = `
-        <div class="popup-form">
-            <span class="road-label">📍 ${roadName}</span>
-            <textarea id="manualNote" placeholder="Notes" style="width:100%; height:50px;"></textarea>
-            <input type="file" id="manualPhoto" accept="image/*" style="width:100%; margin:5px 0;">
-            <button id="manualSaveBtn" class="save-btn" ${disabledAttr} 
-                style="${buttonStyle}"
-                onclick="handleManualSave(${latlng.lat}, ${latlng.lng}, '${roadName.replace(/'/g, "\\'")}')">
-                ${buttonText}
-            </button>
-        </div>`;
-    L.popup().setLatLng(latlng).setContent(formHtml).openOn(map);
-}
-
+// 5. MARKER UI (With Apple Severity Design)
 function addMarkerToMap(data, key) {
-    const markerColor = data.status === "resolved" ? "#2ecc71" : "#e74c3c";
-    
+    // Determine Color based on Severity
+    let sevColor = "#FF9500"; // Default Medio (Orange)
+    if(data.status === "resolved") sevColor = "#34C759"; // Apple Success Green
+    else if(data.severity === "lieve") sevColor = "#34C759";
+    else if(data.severity === "grave") sevColor = "#FF3B30";
+    else if(data.severity === "critico") sevColor = "#1D1D1F"; // Black/Critical
+
     const iconHtml = data.image 
-        ? `<div style="width:40px; height:40px; border-radius:50%; border:3px solid ${markerColor}; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);"></div>`
-        : `<div style="width:20px; height:20px; background-color:${markerColor}; border-radius:50%; border:2px solid white;"></div>`;
+        ? `<div style="width:44px; height:44px; border-radius:50%; border:3px solid ${sevColor}; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>`
+        : `<div style="width:24px; height:24px; background-color:${sevColor}; border-radius:50%; border:2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"></div>`;
 
     const customIcon = L.divIcon({
         html: iconHtml,
         className: 'custom-icon',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
+        iconSize: [44, 44],
+        iconAnchor: [22, 22]
     });
 
     const marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
-    let content = `<div class="popup-form">
-        <span class="road-label">📍 ${data.road}</span>
-        ${data.image ? `<img src="${data.image}" class="preview-img" style="width:100%; border-radius:8px;">` : ''}
-        ${data.note ? `<p><b>Note:</b> ${data.note}</p>` : ''}
-        <hr><button onclick="deleteReport('${key}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:11px; width:100%;">🗑️ Delete</button>
-    </div>`;
-    marker.bindPopup(content);
+    
+    // ACTION: Click marker opens the Apple Lightbox
+    marker.on('click', () => {
+        openLightbox(key, data.image, data.road, data.severity);
+    });
 }
 
-// 6. UTILS & SYSTEM
+// 6. DEEP TAGGING & LIGHTBOX LOGIC
+function openLightbox(id, imageUrl, roadName, currentSev) {
+    currentReportId = id;
+    const lightbox = document.getElementById('lightbox');
+    const fullPhoto = document.getElementById('fullPhoto');
+    const modalInfo = document.getElementById('modalInfo');
+
+    if (!lightbox || !fullPhoto) return;
+
+    fullPhoto.src = imageUrl;
+    modalInfo.innerText = roadName || "Segnalazione Asti";
+    
+    // Highlight existing selection
+    document.querySelectorAll('.sev-btn').forEach(btn => {
+        btn.style.border = (btn.getAttribute('onclick').includes(currentSev)) 
+            ? '3px solid currentColor' 
+            : '2px solid transparent';
+    });
+    
+    lightbox.style.display = 'flex';
+}
+
+function updateSev(level, element) {
+    if (!currentReportId) return;
+    
+    document.querySelectorAll('.sev-btn').forEach(btn => btn.style.border = '2px solid transparent');
+    element.style.border = '3px solid currentColor';
+
+    reportsRef.child(currentReportId).update({
+        severity: level
+    }).then(() => {
+        console.log("Database Updated: " + level);
+    }).catch(err => console.error(err));
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+    currentReportId = null;
+}
+
+// 7. UTILS
 async function handleManualSave(lat, lng, roadName) {
     const note = document.getElementById('manualNote').value;
     const fileInput = document.getElementById('manualPhoto');
     const saveBtn = document.getElementById('manualSaveBtn');
 
     saveBtn.disabled = true;
-    saveBtn.innerText = "Processing Photo...";
+    saveBtn.innerText = "Elaborazione...";
 
     try {
         let imageData = null;
-
         if (fileInput.files && fileInput.files[0]) {
-            imageData = await new Promise((resolve, reject) => {
+            imageData = await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        const MAX_WIDTH = 600;
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * (MAX_WIDTH / img.width);
+                        canvas.width = 600;
+                        canvas.height = img.height * (600 / img.width);
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         resolve(canvas.toDataURL('image/jpeg', 0.6));
                     };
-                    img.onerror = reject;
                     img.src = e.target.result;
                 };
-                reader.onerror = reject;
                 reader.readAsDataURL(fileInput.files[0]);
             });
         }
 
-        saveBtn.innerText = "Uploading...";
         await reportsRef.push({
-            lat: lat,
-            lng: lng,
-            road: roadName,
-            note: note,
-            image: imageData,
-            timestamp: Date.now()
+            lat: lat, lng: lng, road: roadName, note: note,
+            image: imageData, status: "active", severity: "medio", timestamp: Date.now()
         });
 
         map.closePopup();
-        alert("✅ Report saved successfully!");
+        alert("✅ Segnalazione inviata!");
     } catch (error) {
-        console.error("Save Error:", error);
-        alert("🛑 Error saving report.");
+        alert("🛑 Errore nel salvataggio.");
         saveBtn.disabled = false;
-        saveBtn.innerText = "Try Again";
     }
-}
-
-function deleteReport(firebaseKey) {
-    const secret = prompt("Password:");
-    if (secret === "Asti123") reportsRef.child(firebaseKey).remove();
 }
 
 function requestLocation(doFly) {
@@ -237,7 +246,7 @@ function verifyLocationThenCamera() {
     navigator.geolocation.getCurrentPosition((pos) => {
         currentUserPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         document.getElementById('hiddenCameraInput').click();
-    }, () => alert("GPS required!"), { enableHighAccuracy: true });
+    }, () => alert("GPS richiesto!"), { enableHighAccuracy: true });
 }
 
 function handleCameraUpload(event) {
