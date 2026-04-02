@@ -128,43 +128,57 @@ function showManualPopup(latlng, roadName, isAsti) {
     const disabledAttr = isAsti ? "" : "disabled";
 
     const formHtml = `
-        <div class="popup-form" style="padding:10px; min-width:200px;">
-            <span class="road-label" style="font-weight:bold; color:#e74c3c; display:block; margin-bottom:5px;">📍 ${roadName}</span>
-            <textarea id="manualNote" placeholder="Note (es. buca profonda)" style="width:100%; height:50px; border-radius:8px; border:1px solid #ddd; padding:5px; margin-bottom:10px;"></textarea>
-            <input type="file" id="manualPhoto" accept="image/*" style="width:100%; margin-bottom:10px;">
+        <div class="popup-form" style="padding:10px; min-width:240px; font-family: -apple-system, sans-serif;">
+            <span class="road-label" style="font-weight:bold; color:#e74c3c; display:block; margin-bottom:10px;">📍 ${roadName}</span>
+            
+            <label style="font-size:0.75rem; color:#86868B; font-weight:700; text-transform:uppercase;">Note</label>
+            <textarea id="manualNote" placeholder="Dettagli sul danno..." style="width:100%; height:50px; border-radius:8px; border:1px solid #ddd; padding:8px; margin-bottom:12px; font-family:inherit;"></textarea>
+            
+            <label style="font-size:0.75rem; color:#86868B; font-weight:700; text-transform:uppercase;">Livello Danno (Standard IT)</label>
+            <select id="manualSeverity" style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; margin-bottom:12px; background:white; font-family:inherit; font-weight:600;">
+                <option value="none">🟢 Nessun danno (None)</option>
+                <option value="lieve">🟡 Lieve (Minor)</option>
+                <option value="medio" selected>🟠 Medio (Medium)</option>
+                <option value="grave">🔴 Grave (Severe)</option>
+                <option value="critico">⚫ Critico (Emergency)</option>
+            </select>
+
+            <label style="font-size:0.75rem; color:#86868B; font-weight:700; text-transform:uppercase;">Foto</label>
+            <input type="file" id="manualPhoto" accept="image/*" style="width:100%; margin-bottom:15px; font-size:0.8rem;">
+            
             <button id="manualSaveBtn" class="save-btn" ${disabledAttr} 
-                style="${buttonStyle} color:white; border:none; padding:12px; width:100%; border-radius:12px; font-weight:bold; cursor:pointer;"
+                style="${buttonStyle} color:white; border:none; padding:14px; width:100%; border-radius:12px; font-weight:bold; cursor:pointer;"
                 onclick="handleManualSave(${latlng.lat}, ${latlng.lng}, '${roadName.replace(/'/g, "\\'")}')">
                 ${buttonText}
             </button>
         </div>`;
     L.popup().setLatLng(latlng).setContent(formHtml).openOn(map);
 }
-
 function addMarkerToMap(data, key) {
     const myID = getDeviceID();
     const isOwner = (data.ownerID === myID);
     
-    // UI Color Logic
-    let ringColor = data.status === "resolved" ? "#34C759" : "#FF9500";
-    if(data.severity === "lieve") ringColor = "#34C759";
-    if(data.severity === "grave") ringColor = "#FF3B30";
-    if(data.severity === "critico") ringColor = "#1D1D1F";
+    // Logic for 5 Levels of Severity
+    let ringColor = "#86868B"; // Default Gray
+    if(data.severity === "none") ringColor = "#34C759";    // Green
+    if(data.severity === "lieve") ringColor = "#FFCC00";   // Yellow
+    if(data.severity === "medio") ringColor = "#FF9500";   // Orange
+    if(data.severity === "grave") ringColor = "#FF3B30";   // Red
+    if(data.severity === "critico") ringColor = "#1D1D1F"; // Black
 
     const iconHtml = data.image 
-        ? `<div style="width:40px; height:40px; border-radius:50%; border:3px solid ${ringColor}; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`
-        : `<div style="width:20px; height:20px; background-color:${ringColor}; border-radius:50%; border:2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"></div>`;
+        ? `<div style="width:42px; height:42px; border-radius:50%; border:3px solid ${ringColor}; background-image:url('${data.image}'); background-size:cover; background-position:center; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"></div>`
+        : `<div style="width:24px; height:24px; background-color:${ringColor}; border-radius:50%; border:2px solid white;"></div>`;
 
     const customIcon = L.divIcon({
         html: iconHtml,
         className: 'custom-icon',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
+        iconSize: [42, 42],
+        iconAnchor: [21, 21]
     });
 
     const marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
 
-    // OPEN LIGHTBOX ON CLICK
     marker.on('click', () => { 
         openLightbox(key, data.image, data.road, data.severity, isOwner); 
     });
@@ -241,11 +255,12 @@ function closeLightbox() {
 // 7. UTILS & SYSTEM
 async function handleManualSave(lat, lng, roadName) {
     const note = document.getElementById('manualNote').value;
+    const severity = document.getElementById('manualSeverity').value; // New logic
     const fileInput = document.getElementById('manualPhoto');
     const saveBtn = document.getElementById('manualSaveBtn');
 
     saveBtn.disabled = true;
-    saveBtn.innerText = "Salvataggio...";
+    saveBtn.innerText = "Invio...";
 
     try {
         let imageData = null;
@@ -262,19 +277,17 @@ async function handleManualSave(lat, lng, roadName) {
             lng: lng,
             road: roadName,
             note: note || "",
+            severity: severity, // Correctly saves one of the 5 levels
             image: imageData,
             status: "active",
-            severity: "medio",
             timestamp: Date.now(),
-            ownerID: getDeviceID() // Tagged with the device ID
+            ownerID: getDeviceID()
         });
 
         map.closePopup();
     } catch (error) {
-        console.error("Save error:", error);
-        alert("Errore nel salvataggio.");
+        alert("Errore salvataggio!");
         saveBtn.disabled = false;
-        saveBtn.innerText = "Riprova";
     }
 }
 
