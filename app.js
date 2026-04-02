@@ -83,44 +83,47 @@ function addAstiBoundary() {
 // 4. CORE PROCESSING
 async function processLocation(latlng, type, imageData = null) {
     try {
-        const res = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${latlng.lng},${latlng.lat}?number=1`);
-        const data = await res.json();
-        const snapped = data.waypoints[0].location;
-        const snappedLatLng = { lat: snapped[1], lng: snapped[0] };
-        
-        const roadRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${snappedLatLng.lat}&lon=${snappedLatLng.lng}&zoom=18&addressdetails=1`);
+        // 1. Get the Address (Reverse Geocoding)
+        const roadRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=18&addressdetails=1`);
         const roadData = await roadRes.json();
-        const addr = roadData.address;
+        const addr = roadData.address || {};
+        const roadName = addr.road || addr.pedestrian || addr.suburb || "Strada ad Asti";
 
-        const postcode = addr.postcode || "";
-        const provinceCode = addr.province || addr.county || "";
-        
-        const isAsti = (
-            provinceCode.includes("Asti") || 
-            postcode.startsWith("14") || 
-            addr.city_district === "Asti"
-        );
+        // 2. Simple Asti Check (Postcode 14xxx or Province Asti)
+        const isAsti = (addr.postcode && addr.postcode.startsWith("14")) || 
+                       (addr.county && addr.county.includes("Asti")) || 
+                       (addr.city && addr.city.includes("Asti"));
 
         if (type === 'manual') {
-            showManualPopup(snappedLatLng, addr.road || addr.city || "Strada ad Asti", isAsti);
+            // Always show popup for manual clicks so user can see where they clicked
+            showManualPopup(latlng, roadName, isAsti);
         } else {
-            if (!isAsti) {
-                alert("🛑 Segnalazione Bloccata: Sei fuori dai confini della Provincia di Asti.");
-                return;
-            }
+            // Camera Upload Logic
+            // If GPS is on, we save immediately
             reportsRef.push({ 
-                lat: snappedLatLng.lat, 
-                lng: snappedLatLng.lng, 
-                road: addr.road || addr.city || "Strada ad Asti", 
-                note: "Report Foto", 
+                lat: latlng.lat, 
+                lng: latlng.lng, 
+                road: roadName, 
+                note: "Photo Report", 
                 image: imageData, 
                 status: "active",
-                severity: "medio", // Default severity
+                severity: "medio",
                 timestamp: Date.now() 
             });
             alert("✅ Segnalazione Salvata!");
         }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error("Location Process Error:", err);
+        // Fallback: If the address server fails, still allow saving with generic name
+        if (type !== 'manual') {
+            reportsRef.push({ 
+                lat: latlng.lat, lng: latlng.lng, 
+                road: "Posizione GPS", image: imageData, 
+                status: "active", severity: "medio", timestamp: Date.now() 
+            });
+            alert("✅ Salvato (Senza indirizzo)");
+        }
+    }
 }
 
 // 5. MARKER UI (With Apple Severity Design)
@@ -198,39 +201,38 @@ async function handleManualSave(lat, lng, roadName) {
     const saveBtn = document.getElementById('manualSaveBtn');
 
     saveBtn.disabled = true;
-    saveBtn.innerText = "Elaborazione...";
+    saveBtn.innerText = "Salvataggio...";
 
     try {
         let imageData = null;
+        // Handle photo if provided
         if (fileInput.files && fileInput.files[0]) {
             imageData = await new Promise((resolve) => {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        canvas.width = 600;
-                        canvas.height = img.height * (600 / img.width);
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.6));
-                    };
-                    img.src = e.target.result;
-                };
+                reader.onload = (e) => resolve(e.target.result); // Simplified for testing
                 reader.readAsDataURL(fileInput.files[0]);
             });
         }
 
+        // FORCE SAVE to Firebase
         await reportsRef.push({
-            lat: lat, lng: lng, road: roadName, note: note,
-            image: imageData, status: "active", severity: "medio", timestamp: Date.now()
+            lat: lat,
+            lng: lng,
+            road: roadName,
+            note: note || "Segnalazione manuale",
+            image: imageData,
+            status: "active",
+            severity: "medio",
+            timestamp: Date.now()
         });
 
         map.closePopup();
-        alert("✅ Segnalazione inviata!");
+        alert("✅ Segnalazione inviata con successo!");
     } catch (error) {
-        alert("🛑 Errore nel salvataggio.");
+        console.error("Firebase Save Error:", error);
+        alert("🛑 Errore: " + error.message);
         saveBtn.disabled = false;
+        saveBtn.innerText = "Riprova";
     }
 }
 
