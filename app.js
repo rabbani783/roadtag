@@ -18,14 +18,13 @@ let map, currentUserPos = null;
 let currentReportId = null; // Global tracker for the Lightbox
 
 // 2. INITIALIZATION
+// 2. INITIALIZATION (Updated with Debugging)
 function initApp() {
     try {
-        const savedLoc = JSON.parse(localStorage.getItem('lastLocation'));
-        
         map = L.map('map', { 
             zoomControl: false,
             minZoom: 9 
-        }).setView([44.90, 8.20], 10);
+        }).setView([44.90, 8.20], 13); // Centered on Asti
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
             maxZoom: 19 
@@ -33,28 +32,49 @@ function initApp() {
 
         addAstiBoundary();
 
-        setTimeout(() => { map.invalidateSize(); }, 500);
-
-        map.on('click', (e) => processLocation(e.latlng, 'manual'));
+        // THE CLICK LISTENER - Ensure this is active
+        map.on('click', function(e) {
+            console.log("Mappa cliccata a:", e.latlng);
+            processLocation(e.latlng, 'manual');
+        });
         
-        // Listen for new reports AND updates (important for severity changes)
         reportsRef.on('child_added', (snapshot) => {
             addMarkerToMap(snapshot.val(), snapshot.key);
-        });
-
-        reportsRef.on('child_changed', (snapshot) => {
-            // Refresh marker if severity or status changes
-            location.reload(); 
-        });
-
-        reportsRef.on('child_removed', () => {
-            location.reload(); 
         });
 
         requestLocation(false);
     } catch (e) { 
         console.error("Initialization Error:", e);
     }
+}
+
+// 5. UI COMPONENTS (Fixed Popup Logic)
+function showManualPopup(latlng, roadName, isAsti) {
+    console.log("Apertura Popup per:", roadName);
+    
+    // Apple Design Form
+    const formHtml = `
+        <div class="popup-form" style="font-family: -apple-system, sans-serif; padding: 10px;">
+            <span class="road-label" style="color: #FF3B30; font-weight: bold; display: block; margin-bottom: 10px;">
+                📍 ${roadName}
+            </span>
+            <textarea id="manualNote" placeholder="Aggiungi note (es. buca profonda)" 
+                style="width: 100%; height: 60px; border-radius: 8px; border: 1px solid #D2D2D7; padding: 8px; margin-bottom: 10px;"></textarea>
+            
+            <label style="font-size: 0.8rem; font-weight: bold; color: #86868B;">FOTO (Opzionale)</label>
+            <input type="file" id="manualPhoto" accept="image/*" style="width: 100%; margin: 10px 0;">
+            
+            <button id="manualSaveBtn" 
+                style="width: 100%; background: #34C759; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer;"
+                onclick="handleManualSave(${latlng.lat}, ${latlng.lng}, '${roadName.replace(/'/g, "\\'")}')">
+                Salva Segnalazione
+            </button>
+        </div>`;
+
+    L.popup()
+        .setLatLng(latlng)
+        .setContent(formHtml)
+        .openOn(map);
 }
 
 // 3. GEOGRAPHICAL BOUNDARIES
