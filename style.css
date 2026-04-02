@@ -2,46 +2,88 @@
 :root {
     --apple-blue: #007AFF;
     --apple-bg: #F5F5F7;
-    --apple-gray: #86868B;
+    --apple-gray: #6E6E73; /* improved contrast */
     --apple-danger: #FF3B30;
     --apple-success: #34C759;
+    --text-primary: #1D1D1F;
 }
 
 body { 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-    margin: 0; padding: 0; overflow: hidden; background: #2c3e50; 
+    margin: 0; 
+    padding: 0; 
+    overflow: hidden; 
+    background: #2c3e50;
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-#map { height: 100vh; width: 100vw; z-index: 1; background-color: #ddd; }
+#map { 
+    height: 100vh; 
+    width: 100vw; 
+    z-index: 1; 
+    background-color: #ddd;
+    touch-action: manipulation;
+}
 
 /* --- FLOATING ACTION BUTTONS (FAB) --- */
 .fab-container { 
-    position: fixed; bottom: 30px; width: 100%; display: flex; 
-    justify-content: center; align-items: center; pointer-events: none; z-index: 1000; 
+    position: fixed; 
+    bottom: 30px; 
+    width: 100%; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    pointer-events: none; 
+    z-index: 1000;
+
+    backdrop-filter: blur(10px);
 }
 
 .fab { 
-    pointer-events: auto; cursor: pointer; border: none; 
-    display: flex; align-items: center; justify-content: center; 
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3); transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: auto; 
+    cursor: pointer; 
+    border: none; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3); 
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .fab:active { transform: scale(0.9); }
 
 .btn-report { 
-    width: 80px; height: 80px; background-color: var(--apple-danger); 
-    color: white; border-radius: 50%; font-size: 35px; font-weight: bold; 
+    width: 85px; 
+    height: 85px; 
+    background-color: var(--apple-danger); 
+    color: white; 
+    border-radius: 50%; 
+    font-size: 38px; 
+    font-weight: bold;
+
+    box-shadow: 0 10px 30px rgba(255,59,48,0.4);
 }
 
 .btn-location { 
-    position: absolute; right: 20px; width: 55px; height: 55px; 
-    background-color: white; border-radius: 50%; font-size: 24px; color: #333; 
+    position: absolute; 
+    right: 20px; 
+    width: 55px; 
+    height: 55px; 
+    background-color: white; 
+    border-radius: 50%; 
+    font-size: 24px; 
+    color: #333; 
 }
 
 /* --- LIGHTBOX MODAL (APPLE DESIGN) --- */
 #lightbox {
     transition: opacity 0.3s ease;
-    display: none; /* Controlled by app.js */
+    display: none;
 }
 
 .modal-content {
@@ -61,19 +103,67 @@ body {
 
 .sev-btn:active { transform: scale(0.95); }
 
+/* --- CRITICAL ANIMATION --- */
+@keyframes pulseCritical {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(0,0,0,0); }
+    100% { transform: scale(1); }
+}
+
+.critical-marker {
+    animation: pulseCritical 1.5s infinite;
+}
+
 /* --- POPUP & FORM STYLES --- */
-.popup-form { color: #1D1D1F; min-width: 220px; padding: 10px; font-family: inherit; }
-.road-label { font-weight: 700; color: var(--apple-danger); display: block; margin-bottom: 8px; font-size: 15px; }
+.popup-form { 
+    color: var(--text-primary); 
+    min-width: 220px; 
+    padding: 10px; 
+    font-family: inherit; 
+}
+
+.road-label { 
+    font-weight: 700; 
+    color: var(--apple-danger); 
+    display: block; 
+    margin-bottom: 8px; 
+    font-size: 16px;
+}
+
+.popup-form textarea,
+.popup-form select,
+.popup-form input[type="file"] {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #D2D2D7;
+    font-size: 16px;
+    margin-bottom: 10px;
+    font-family: inherit;
+}
 
 .preview-img { 
-    width: 100%; border-radius: 12px; margin-top: 10px; 
-    border: 1px solid #E8E8ED; object-fit: cover;
+    width: 100%; 
+    border-radius: 12px; 
+    margin-top: 10px; 
+    border: 1px solid #E8E8ED; 
+    object-fit: cover;
+    max-height: 200px;
 }
 
 .save-btn { 
-    background: var(--apple-success); color: white; border: none; 
-    padding: 14px; width: 100%; border-radius: 12px; margin-top: 15px; 
-    font-weight: 700; cursor: pointer; font-size: 1rem;
+    background: var(--apple-success); 
+    color: white; 
+    border: none; 
+    padding: 16px; 
+    width: 100%; 
+    border-radius: 14px; 
+    margin-top: 15px; 
+    font-weight: 700; 
+    cursor: pointer; 
+    font-size: 1.1rem;
+
+    box-shadow: 0 6px 15px rgba(52,199,89,0.3);
 }
 
 #hiddenCameraInput { display: none; }
@@ -85,7 +175,7 @@ body {
 }
 
 .custom-icon:hover {
-    transform: scale(1.15);
+    transform: scale(1.2);
     z-index: 1000 !important;
 }
 
